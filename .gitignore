@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.xlsx
+*.png
+!images/*.png
+*.pdf
+.ipynb_checkpoints/
+.jupyter/
+Config/Api_keys.py
+bank_risk_model.py
+FMP_Downloader.py
+Analyse.ipynb
