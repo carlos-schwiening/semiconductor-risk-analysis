@@ -147,6 +147,8 @@ The Monte Carlo engine runs 10,000 simulations of DCF equity values across all f
 
 The **Convergence Test** confirms `VaR` 99% stabilizes above 5,000 simulations (Δ < 0.1%). The **Tornado Chart** isolates the contribution of each parameter by varying it from P10 to P90 while holding all others at their mean — `FCF` variability dominates, followed by `WACC` uncertainty.
 
+Each parameter's distribution shape reflects a specific assumption about its empirical behavior rather than a default choice. `WACC` uses a **Normal** distribution because its underlying components (cost of equity, cost of debt) are approximately symmetric around their expected value with no known skew — the standard approach in practice. $g_1$ uses a **Triangular** distribution, deliberately chosen because the available information is a plausible range (0% floor, no negative growth assumed) and a most-likely value rather than a fully estimated distribution shape — the 12% ceiling reflects historical semiconductor sector growth rates. `FCF` uses a **Log-Normal** distribution to capture the right-skew typical of cash flow shocks, where large positive surprises are more likely than symmetric extremes in either direction. $g_2$ uses a **Uniform** distribution between a plausible floor and ceiling close to long-run GDP growth, deliberately encoding maximum uncertainty without favoring any value within that range — the most conservative assumption available when only the bounds, not the shape, are known.
+
 **Parameter Distributions:**
 
 | Parameter | Distribution | E[X] | P10 | P90 |
@@ -169,7 +171,7 @@ The **Convergence Test** confirms `VaR` 99% stabilizes above 5,000 simulations (
 
 ![QCOM Monte Carlo Dashboard](images/QCOM_MCS_Dashboard.png)
 
-The table below translates each ticker's simulated loss distribution into VaR/CVaR terms relative to its current market price (100% = no loss; values above 100% mean the simulated DCF value turns negative in the tail). **INTC stands out with materially higher risk** — its negative free cash flow pulls a large share of the simulated distribution below zero, pushing VaR/CVaR figures far beyond the other four names. The **portfolio VaR 99% (100.6%) sits below the average of the single-name VaRs**, which is the concrete evidence of the diversification effect from spreading across five tickers even under a 60% sector correlation assumption.
+The table below translates each ticker's simulated loss distribution into VaR/CVaR terms relative to its current market price (100% = no loss; values above 100% mean the simulated DCF value turns negative in the tail). **INTC stands out with materially higher risk** — its negative free cash flow pulls a large share of the simulated distribution below zero, pushing VaR/CVaR figures far beyond the other four names. Because INTC's mean FCF is negative, the Log-Normal sampling — which requires a positive mean — falls back to a Normal distribution centered on that negative mean, with the standard deviation scaled to the same magnitude (|mean| × 25%) rather than a fixed value, preserving the intended relative uncertainty without requiring a sign change in the input. The **portfolio VaR 99% (100.6%) sits below the average of the single-name VaRs**, which is the concrete evidence of the diversification effect from spreading across five tickers even under a 60% sector correlation assumption.
 
 | Ticker | VaR 95% | VaR 99% | CVaR 99% |
 |---|---|---|---|
