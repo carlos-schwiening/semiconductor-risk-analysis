@@ -211,3 +211,21 @@ Price history, balance sheet, income statement, cash flow, and key metrics are s
 
 **Carlos Schwiening** — MSc Accounting, Finance & Controlling  
 GitHub: [carlos-schwiening](https://github.com/carlos-schwiening)
+
+---
+
+## References
+
+Bolder, David Jamieson (2018): Credit-Risk Modelling. Theoretical Foundations, Diagnostic Tools, Practical Examples, and Numerical Recipes in Python. 1st ed. Cham: Springer International Publishing.
+
+Desmettre, Sascha; Korn, Ralf (2018): Erweiterungen des Black-Scholes-Modells, Zins, Kreditrisiko und Statistik. Wiesbaden: Springer Spektrum (Studienbücher Wirtschaftsmathematik, Band 2).
+
+Gleißner, Werner (2019): Risikoaggregation und Monte-Carlo-Simulation: Schlüsseltechnologie für Risikomanagement und Controlling. 1. Auflage. Wiesbaden: Springer Verlag.
+
+IDW – Institut der Wirtschaftsprüfer in Deutschland e. V. (2017): Grundsätze zur Durchführung von Unternehmensbewertungen (IDW S 1 i.d.F. 2008). Düsseldorf.
+
+Merton, Robert C. (1974): On the Pricing of Corporate Debt: The Risk Structure of Interest Rates. In: The Journal of Finance, Vol. 29, No. 2, pp. 449-470.
+
+Witzany, Jiří (2017): Credit Risk Management. Pricing, Measurement, and Modeling. 1st ed. Cham: Springer International Publishing.
+
+Zieliński, Tomasz: Merton's and KMV Models in Credit Risk Management. University of Economics in Katowice.
