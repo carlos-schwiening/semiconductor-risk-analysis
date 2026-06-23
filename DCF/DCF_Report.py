@@ -83,16 +83,11 @@ inc_list   = _load_json(f"{TICKER}_income-statement.json")[:5]
 bs         = _load_json(f"{TICKER}_balance-sheet-statement.json")[0]
 
 fcf        = [float(e.get("freeCashFlow",       0) or 0) for e in cf_list]
-op_cf      = [float(e.get("operatingCashFlow",  0) or 0) for e in cf_list]
 cf_dates   = [e.get("date", "") for e in cf_list]
-revenue    = [float(e.get("revenue",    0) or 0) for e in inc_list]
-ebitda_lst = [float(e.get("ebitda",     0) or 0) for e in inc_list]
-net_income = [float(e.get("netIncome",  0) or 0) for e in inc_list]
 
 market_cap = float(km.get("marketCap",                0) or 0)
 total_debt = float(bs.get("totalDebt",                0) or 0)
 cash       = float(bs.get("cashAndCashEquivalents",   0) or 0)
-equity_bk  = float(bs.get("totalStockholdersEquity",  0) or 0)
 
 ev       = market_cap + total_debt - cash
 net_debt = total_debt - cash
@@ -266,7 +261,6 @@ chart1_html = _html(fig1)
 print("  Chart 1 (FCF) ready.")
 
 # ── Chart 2: DCF Waterfall ───────────────────────────────────
-_wf_x = [f"PV J{d['Year']}" for d in fcf_prognose] + ["PV TV"]
 _wf_y_fcf = [d["PV_FCF"] / 1e9 for d in fcf_prognose]
 _wf_y_tv  = [pv_tv / 1e9]
 

@@ -89,7 +89,6 @@ def load_dcf_data():
     # cash-flow-statement — 5 years, newest first
     cf_list  = load_json(f"{TICKER}_cash-flow-statement.json")[:5]
     fcf      = [float(e.get("freeCashFlow",    0) or 0) for e in cf_list]
-    op_cf    = [float(e.get("operatingCashFlow", 0) or 0) for e in cf_list]
     cf_dates = [e.get("date", "") for e in cf_list]
 
     # income-statement — 5 years, newest first
@@ -116,7 +115,6 @@ def load_dcf_data():
         "fcf_yield":     fcf_yield,
         "market_cap":    market_cap,
         "fcf":           fcf,
-        "op_cf":         op_cf,
         "cf_dates":      cf_dates,
         "revenue":       revenue,
         "ebitda":        ebitda,
@@ -135,7 +133,6 @@ total_debt = data["total_debt"]
 cash       = data["cash"]
 equity_bk  = data["equity_bk"]
 fcf        = data["fcf"]
-op_cf      = data["op_cf"]
 revenue    = data["revenue"]
 ebitda     = data["ebitda"]
 net_income = data["net_income"]
@@ -174,10 +171,6 @@ print(f"Equity (book):           {equity_bk / 1e9:.2f} Bn USD")
 print(f"Total Debt:              {total_debt / 1e9:.2f} Bn USD")
 print(f"Cash & Equivalents:      {cash / 1e9:.2f} Bn USD")
 
-print(f"\n--- FCF & Operating CF (5 years, newest first) ---")
-for d, fcf_val, opcf_val in zip(cf_dates, fcf, op_cf):
-    print(f"  {d}: FCF = {fcf_val / 1e9:.3f} Bn | OpCF = {opcf_val / 1e9:.3f} Bn")
-
 print(f"\n--- Revenue & Profitability (5 years, newest first) ---")
 for i, d in enumerate(cf_dates):
     margin = ebitda[i] / revenue[i] if revenue[i] != 0 else 0.0
@@ -194,7 +187,7 @@ def _load_prices(filename):
     return df["close"]
 
 
-def calculate_wacc(ticker, prices, total_debt, equity_bk, income_data, risk_free_rate):
+def calculate_wacc(prices, total_debt, income_data, risk_free_rate):
     """CAPM-based WACC: Beta (252-day OLS), Ke, Kd after tax, E/V weights."""
     # Beta via OLS covariance (252 trading days vs S&P 500)
     sp500    = _load_prices("SP500_historical-price-eod_full.json")
@@ -253,10 +246,8 @@ prices_ticker = _load_prices(f"{TICKER}_historical-price-eod_full.json")
 inc_raw       = load_json(f"{TICKER}_income-statement.json")[:5]
 
 wacc_res = calculate_wacc(
-    ticker         = TICKER,
     prices         = prices_ticker,
     total_debt     = total_debt,
-    equity_bk      = equity_bk,
     income_data    = inc_raw,
     risk_free_rate = RISK_FREE_RATE,
 )

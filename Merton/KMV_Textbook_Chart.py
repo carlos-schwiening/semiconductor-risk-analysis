@@ -30,7 +30,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from plot_style import LAYOUT, ORANGE_1, GRAY_1, BG, TEXT
+from plot_style import LAYOUT, ORANGE_1, GRAY_1, BG, TEXT, TICKER_COLORS
 
 TICKER_LIST   = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
@@ -39,14 +39,6 @@ OUTPUT_DIR = r"C:\Python\Outputs\Reports\DCF_Merton_MC"
 TODAY   = date.today().strftime("%Y-%m-%d")
 N_PATHS = 15      # 14 gray + 1 highlighted in ticker color
 T_DAYS  = 252     # Simulation horizon in trading days
-
-TICKER_COLORS = {
-    "MCHP": "#1B4332",
-    "INTC": "#C0392B",
-    "ON":   "#2D6A4F",
-    "QCOM": "#1D6FD8",
-    "MPWR": "#0B1220",
-}
 
 print(f"\n{'='*60}")
 print(f"KMV Textbook Chart — {TODAY}")

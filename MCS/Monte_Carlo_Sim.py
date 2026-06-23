@@ -32,7 +32,6 @@ import glob
 import json
 import importlib
 import warnings
-import webbrowser
 from datetime import date
 
 import numpy as np
@@ -196,225 +195,14 @@ print(f"RC / EL Ratio:   {rc_el:.1f}x" if not np.isnan(rc_el) else "RC / EL Rati
 # endregion
 
 
-# region Block 4 - Visualization + HTML Report
+# region Block 4 - Risk Measure Scaling
+# ────────────────────────────────────────────────────────────
+# The Vasicek loss-distribution chart (PNG) and the standalone HTML
+# report were removed. Only ul_pct is retained below because the
+# Interpretation block references it (UL_portfolio).
+# ────────────────────────────────────────────────────────────
 
-losses_pct = portfolio_losses * 100   # everything in % for display
-el_pct     = EL      * 100
-ul_pct     = UL      * 100
-var99_pct  = VaR_99  * 100
-var999_pct = VaR_999 * 100
-cvar99_pct = CVaR_99 * 100
-rc_pct     = RC      * 100
-
-# ── Histogram bins ──────────────────────────────────────────
-_step   = EXPOSURE * LGD * 100               # smallest loss unit in %
-x_max   = float(np.percentile(losses_pct, 99.95)) + _step
-bsize   = max(_step, (x_max) / 80)           # at least one loss unit
-
-mask_norm = losses_pct <  var99_pct
-mask_orng = (losses_pct >= var99_pct) & (losses_pct < var999_pct)
-mask_red  = losses_pct >= var999_pct
-
-fig = go.Figure()
-
-fig.add_trace(go.Histogram(
-    x=losses_pct[mask_norm],
-    autobinx=False,
-    xbins=dict(start=0, end=var99_pct, size=bsize),
-    marker=dict(color=BLUE_1,   line=dict(color=BLUE_1,   width=0.3)),
-    opacity=0.60,
-    name="Normal",
-))
-fig.add_trace(go.Histogram(
-    x=losses_pct[mask_orng],
-    autobinx=False,
-    xbins=dict(start=var99_pct, end=var999_pct + bsize, size=bsize),
-    marker=dict(color=ORANGE_1, line=dict(color=ORANGE_1, width=0.3)),
-    opacity=0.82,
-    name=f"Tail VaR 99%–99.9%",
-))
-fig.add_trace(go.Histogram(
-    x=losses_pct[mask_red],
-    autobinx=False,
-    xbins=dict(start=var999_pct, end=x_max + bsize, size=bsize),
-    marker=dict(color=ORANGE_2,    line=dict(color=ORANGE_2,    width=0.3)),
-    opacity=0.88,
-    name=f"Tail > VaR 99.9%",
-))
-
-for x_val, label, col, dash, ypos in [
-    (el_pct,     f"EL {el_pct:.2f}%",         BLUE_1,   "solid", 0.96),
-    (var99_pct,  f"VaR 99% {var99_pct:.2f}%",  ORANGE_1, "solid", 0.88),
-    (var999_pct, f"VaR 99.9% {var999_pct:.2f}%", ORANGE_2,  "solid", 0.80),
-    (cvar99_pct, f"CVaR 99% {cvar99_pct:.2f}%",  ORANGE_2,  "dot",   0.72),
-]:
-    fig.add_vline(x=x_val, line_dash=dash, line_color=col, line_width=2)
-    fig.add_annotation(
-        x=x_val, y=ypos, yref="paper",
-        text=label, showarrow=False,
-        font=dict(color=col, size=9),
-        xanchor="left", yanchor="bottom",
-        bgcolor="rgba(255,255,255,0.80)", borderpad=2,
-    )
-
-fig.update_layout(**LAYOUT)
-fig.update_layout(
-    title=dict(
-        text=(f"Vasicek Portfolio Loss Distribution — {TICKER}<br>"
-              f"<sup>ρ={RHO:.0%} | PD={pd_merton:.2%} | LGD=45% | "
-              f"N={N_LOANS} | {SIMULATIONS:,} Simulations</sup>"),
-        font=dict(size=15, color="#0B1220"), x=0.0,
-    ),
-    barmode="overlay",
-    xaxis=dict(title="Portfolio Loss (%)", range=[0, x_max],
-               showgrid=False, showline=True, linecolor=BORDER),
-    yaxis=dict(title="Frequency", showgrid=False, showline=True, linecolor=BORDER),
-    height=460,
-    margin=dict(l=65, r=40, t=100, b=60),
-    legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0,
-                x=0.65, y=0.99, xanchor="left", yanchor="top"),
-)
-
-# PNG
-png_path = os.path.join(OUTPUT_DIR, f"{TICKER}_VaR_LossDistribution_{date.today()}.png")
-try:
-    fig.write_image(png_path, width=900, height=460, scale=1.5)
-    print(f"\nHistogram saved: {png_path}")
-except Exception:
-    _html_fallback = png_path.replace(".png", ".html")
-    fig.write_html(_html_fallback)
-    print(f"\nHistogram (HTML) saved: {_html_fallback}")
-
-# ── HTML Report ───────────────────────────────────────────────
-_CSS = """
-    *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #FFFFFF;
-           color: #1A1A1A; margin: 0; line-height: 1.5; }
-    .navbar { background: #0B1220; padding: 16px 40px;
-              display: flex; align-items: center; gap: 20px; }
-    .navbar-title { font-size: 18px; font-weight: 700; color: #FFFFFF; margin: 0; }
-    .navbar-sub   { font-size: 13px; color: rgba(255,255,255,0.55); margin-left: auto; }
-    .container    { max-width: 1400px; margin: 0 auto; padding: 36px 40px; }
-    .section      { margin-bottom: 52px; }
-    .section h2   { color: #1D6FD8; font-size: 17px; font-weight: 600;
-                    border-bottom: 2px solid #E5E5E5; padding-bottom: 10px;
-                    margin-top: 0; margin-bottom: 20px; }
-    .kpi-grid { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-    .kpi-tile { border: 1px solid #E5E5E5; border-radius: 6px;
-                padding: 18px 22px; min-width: 170px; flex: 1; }
-    .kpi-label { font-size: 11px; color: #888888; font-weight: 600;
-                 text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
-    .kpi-value { font-size: 22px; font-weight: 700; color: #1A1A1A; }
-    .kpi-blue   { color: #1D6FD8; }
-    .kpi-orange { color: #D4A843; }
-    .kpi-red    { color: #C0392B; }
-    .kpi-green  { color: #1B4332; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    thead th { background: #F1F5F9; color: #1A1A1A; font-weight: 600;
-               padding: 10px 14px; text-align: right;
-               border-bottom: 2px solid #E5E5E5; white-space: nowrap; }
-    thead th:first-child { text-align: left; }
-    tbody td { padding: 9px 14px; border-bottom: 1px solid #E5E5E5;
-               text-align: right; white-space: nowrap; }
-    tbody td:first-child { text-align: left; }
-    tbody tr:hover { background: #f8fafc; }
-    tbody tr.hl td { background: #eff6ff; font-weight: 600; }
-    .chart-card { border: 1px solid #E5E5E5; border-radius: 6px;
-                  padding: 12px; overflow: hidden; margin-bottom: 20px; }
-    .footnote { font-size: 12px; color: #888888;
-                margin-top: 10px; font-style: italic; }
-    .footer { background: #F1F5F9; padding: 14px 40px; text-align: center;
-              font-size: 12px; color: #888888; border-top: 1px solid #E5E5E5; }
-"""
-
-_chart_html = fig.to_html(full_html=False, include_plotlyjs=False,
-                           config=dict(displayModeBar=True, displaylogo=False,
-                                       modeBarButtonsToRemove=["lasso2d", "select2d"]))
-
-# Section 1: KPI box
-s1 = (
-    '<div class="kpi-grid">\n'
-    f'  <div class="kpi-tile"><div class="kpi-label">Expected Loss (EL)</div>'
-    f'  <div class="kpi-value kpi-blue">{el_pct:.3f}%</div></div>\n'
-    f'  <div class="kpi-tile"><div class="kpi-label">VaR 99%</div>'
-    f'  <div class="kpi-value kpi-orange">{var99_pct:.3f}%</div></div>\n'
-    f'  <div class="kpi-tile"><div class="kpi-label">VaR 99.9%</div>'
-    f'  <div class="kpi-value kpi-red">{var999_pct:.3f}%</div></div>\n'
-    f'  <div class="kpi-tile"><div class="kpi-label">Risk Capital (RC)</div>'
-    f'  <div class="kpi-value">{rc_pct:.3f}%</div></div>\n'
-    '</div>'
-)
-
-# Section 2: Chart
-s2 = f'<div class="chart-card">{_chart_html}</div>'
-
-# Section 3: Parameter table
-_p_rows = (
-    f'<tr><td>Ticker</td><td>{TICKER} — {COMPANY}</td></tr>\n'
-    f'<tr><td>Distance to Default (Merton)</td><td>{_merton["dd"]:.4f}</td></tr>\n'
-    f'<tr><td>PD (Merton)</td><td>{pd_merton:.4%}</td></tr>\n'
-    f'<tr><td>Asset Correlation ρ (Basel II)</td><td>{RHO:.0%}</td></tr>\n'
-    f'<tr><td>LGD</td><td>{LGD:.0%}</td></tr>\n'
-    f'<tr><td>Number of Loans</td><td>{N_LOANS}</td></tr>\n'
-    f'<tr><td>Single Exposure</td><td>{EXPOSURE:.1%}</td></tr>\n'
-    f'<tr><td>Simulations</td><td>{SIMULATIONS:,}</td></tr>\n'
-    f'<tr class="hl"><td>Expected Loss (EL)</td><td>{el_pct:.3f}%</td></tr>\n'
-    f'<tr><td>Unexpected Loss (UL, 1σ)</td><td>{ul_pct:.3f}%</td></tr>\n'
-    f'<tr class="hl"><td>VaR 99%</td><td>{var99_pct:.3f}%</td></tr>\n'
-    f'<tr class="hl"><td>VaR 99.9%</td><td>{var999_pct:.3f}%</td></tr>\n'
-    f'<tr><td>CVaR 99% (Expected Shortfall)</td><td>{cvar99_pct:.3f}%</td></tr>\n'
-    f'<tr class="hl"><td>Risk Capital (VaR 99.9% − EL)</td><td>{rc_pct:.3f}%</td></tr>\n'
-    f'<tr><td>RC / EL Ratio</td><td>{"n/a" if np.isnan(rc_el) else f"{rc_el:.1f}×"}</td></tr>\n'
-)
-s3 = (
-    '<table style="max-width:640px;">\n'
-    '<thead><tr><th>Parameter</th><th>Value</th></tr></thead>\n'
-    f'<tbody>{_p_rows}</tbody></table>\n'
-    f'<p class="footnote">Vasicek (2002) single-factor model | '
-    f'PD from Merton (1974) | Seed 42 | Date: {date.today()}</p>'
-)
-
-def _section(title, content):
-    return (
-        '<div class="section">\n'
-        f'  <h2>{title}</h2>\n'
-        f'  {content}\n'
-        '</div>\n'
-    )
-
-html = (
-    '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
-    '<meta charset="UTF-8">\n'
-    '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-    f'<title>MCS Credit Portfolio Report — {TICKER} — {date.today()}</title>\n'
-    '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"'
-    ' rel="stylesheet">\n'
-    '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>\n'
-    '<style>' + _CSS + '</style>\n'
-    '</head>\n<body>\n'
-    '<nav class="navbar">\n'
-    f'  <span class="navbar-title">Credit Portfolio Risk — {COMPANY} ({TICKER})</span>\n'
-    f'  <span class="navbar-sub">{date.today()} &nbsp;|&nbsp; '
-    f'Vasicek Single-Factor Model</span>\n'
-    '</nav>\n'
-    '<div class="container">\n'
-    + _section("Portfolio Risk KPIs", s1)
-    + _section("Loss Distribution", s2)
-    + _section("Model Parameters &amp; Risk Measures", s3)
-    + '</div>\n'
-    f'<div class="footer">Generated: {date.today()} &nbsp;|&nbsp; '
-    f'Vasicek Credit Portfolio Model &nbsp;|&nbsp; '
-    f'PD: Financial Modeling Prep API + Merton (1974)</div>\n'
-    '</body>\n</html>'
-)
-
-html_path = os.path.join(OUTPUT_DIR, f"MCS_Report_{TICKER}_{date.today()}.html")
-with open(html_path, "w", encoding="utf-8") as f:
-    f.write(html)
-
-print(f"HTML Report saved: {html_path}")
-webbrowser.open(html_path)
-print(f"HTML Report opened: {html_path}")
+ul_pct = UL * 100
 
 # endregion
 
@@ -792,11 +580,6 @@ _qcom_wa       = _sim_wa_regime["QCOM"]
 _qcom_wa_valid = _qcom_wa[~np.isnan(_qcom_wa)]
 _qcom_price     = _ticker_price["QCOM"]
 
-# Convert VaR/CVaR from % loss back into USD/share
-_var95_usd  = _qcom_price * (1 - _ticker_risk["QCOM"]["VaR_95"]  / 100)
-_var99_usd  = _qcom_price * (1 - _ticker_risk["QCOM"]["VaR_99"]  / 100)
-_cvar99_usd = _qcom_price * (1 - _ticker_risk["QCOM"]["CVaR_99"] / 100)
-
 # P5 / P95 / Mean directly on the raw value/share distribution (USD), not on %-loss
 _p5_usd   = float(np.percentile(_qcom_wa_valid, 5))
 _p95_usd  = float(np.percentile(_qcom_wa_valid, 95))
@@ -954,7 +737,6 @@ try:
     print(f"=== Block 8b — QCOM Dashboard Chart (@RISK style) ===")
     print(f"{'='*60}")
     print(f"P5={_p5_usd:.2f} USD | Mean={_mean_usd:.2f} USD | P95={_p95_usd:.2f} USD")
-    print(f"VaR95={_var95_usd:.2f} USD | VaR99={_var99_usd:.2f} USD | CVaR99={_cvar99_usd:.2f} USD")
     print(f"Chart saved: {_chart_qcom_path}")
 except Exception as _exc_qcom:
     print(f"\nQCOM Dashboard Chart export failed: {_exc_qcom}")
@@ -1319,7 +1101,6 @@ print("  Sheet Tornado         = 4 rows: tornado results per parameter")
 print("  Sheet Risk_Comparison = 6 rows: VaR95/VaR99/CVaR99 per ticker + portfolio")
 print("_dcf_xlsx_path = Latest DCF_Results_*.xlsx read for the peer summary (Block 6)")
 print("_ticker_risk        = Dict: Ticker -> {VaR_95, VaR_99, CVaR_99} (loss in %)")
-print("_var95_usd/_var99_usd/_cvar99_usd = QCOM VaR/CVaR converted back to USD/share")
 print("_wacc_qcom/_g1_qcom/_fcf_qcom/_g2_qcom = QCOM parameter samples (Block 8b)")
 print("fig_qcom            = Plotly subplot figure: histogram + 4 parameter sparklines (QCOM)")
 print("QCOM_MCS_Dashboard.png  = images/ export for README (Block 8b)")
