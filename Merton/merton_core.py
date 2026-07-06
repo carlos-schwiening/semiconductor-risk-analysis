@@ -7,7 +7,10 @@ import numpy as np
 from scipy.stats import norm
 
 # region Merton Model
-def merton_model(E, D, r, T, sigma_e, max_iter=1000, tol=1e-6):
+def merton_model(
+    E: float, D: float, r: float, T: float, sigma_e: float,
+    max_iter: int = 1000, tol: float = 1e-6,
+) -> dict[str, float]:
     """
     Iterative Merton (1974) model.
     Returns dict: V, sigma_v, dd, pd, el.
@@ -41,7 +44,7 @@ def merton_model(E, D, r, T, sigma_e, max_iter=1000, tol=1e-6):
 
 
 # region Rating & Credit Spread
-RATING_TABLE = [
+RATING_TABLE: list[tuple[str, float, float, int, int]] = [
     ("AAA/AA",  8.0,  float("inf"),  30,   50),
     ("A",       6.0,  8.0,           60,   90),
     ("BBB",     4.0,  6.0,           120,  180),
@@ -51,14 +54,14 @@ RATING_TABLE = [
 ]
 
 
-def get_rating_info(dd):
+def get_rating_info(dd: float) -> tuple[str, int, int]:
     for rating, dd_min, dd_max, bps_lo, bps_hi in RATING_TABLE:
         if dd >= dd_min and (dd < dd_max or dd_max == float("inf")):
             return rating, bps_lo, bps_hi
     return "CCC", 800, 1200
 
 
-def calculate_spread(pd_val, T, lgd=0.45):
+def calculate_spread(pd_val: float, T: float, lgd: float = 0.45) -> float:
     pd_lgd = min(pd_val * lgd, 0.9999)
     if pd_lgd <= 0:
         return 0.0
