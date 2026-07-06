@@ -54,15 +54,20 @@ TICKER            = config.TICKER
 COMPANY       = config.COMPANY
 RISK_FREE_RATE = config.RISK_FREE_RATE
 MATURITY          = config.MATURITY
-OUTPUT_DIR     = os.path.join(config.OUTPUT_DIR, ACTIVE_CONFIG)
+EXCEL_DIR      = os.path.join(config.OUTPUT_DIR, "Excel", ACTIVE_CONFIG)
+VIZ_DIR        = os.path.join(config.OUTPUT_DIR, "Visualisierung", ACTIVE_CONFIG)
 
 CACHE_FOLDER = r"C:\Python\Data\FMP\FMP_Cache"
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(EXCEL_DIR, exist_ok=True)
+os.makedirs(VIZ_DIR, exist_ok=True)
 
 # plot_style — central design template
 from plot_style import LAYOUT, BLUE_1, BLUE_2, BLUE_3, ORANGE_1, ORANGE_2, ORANGE_3, GRAY_1
 BG     = "#FFFFFF"; TEXT = "#1A1A1A"; BORDER = "#E5E5E5"; TEXT_MUTED = "#9CA3AF"
+
+# Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)
+from merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE
 
 # endregion
 
@@ -144,38 +149,6 @@ print(f"{'='*60}")
 # Probability of Default:
 #   PD = N(−DD)
 # ─────────────────────────────────────────────────────────────
-
-def merton_model(E, D, r, T, sigma_e, max_iter=1000, tol=1e-6):
-    """
-    Iterative Merton (1974) model.
-    Returns dict: V, sigma_v, dd, pd, el.
-    """
-    V       = E + D
-    sigma_v = sigma_e * (E / V)
-
-    for _ in range(max_iter):
-        sqrt_t = np.sqrt(T)
-        d1     = (np.log(V / D) + (r + 0.5 * sigma_v ** 2) * T) / (sigma_v * sqrt_t)
-        d2     = d1 - sigma_v * sqrt_t
-
-        e_model       = V * norm.cdf(d1) - D * np.exp(-r * T) * norm.cdf(d2)
-        sigma_e_model = (V / E) * norm.cdf(d1) * sigma_v
-
-        v_new       = V * (E / e_model)
-        sigma_v_new = sigma_e * (E / v_new)
-
-        converged = abs(v_new - V) < tol and abs(sigma_v_new - sigma_v) < tol
-        V, sigma_v = v_new, sigma_v_new
-        if converged:
-            break
-
-    sqrt_t = np.sqrt(T)
-    dd     = (np.log(V / D) + (r - 0.5 * sigma_v ** 2) * T) / (sigma_v * sqrt_t)
-    pd_val = float(norm.cdf(-dd))
-    el     = pd_val * D * 0.45   # LGD assumption 45%
-
-    return {"V": V, "sigma_v": sigma_v, "dd": dd, "pd": pd_val, "el": el}
-
 
 E      = market_cap
 D      = total_debt
@@ -300,7 +273,7 @@ def create_dd_time_series_chart(df, output_path):
     fig.update_yaxes(title_text="DD", row=1, col=1)
     fig.update_yaxes(title_text="USD", row=2, col=1)
 
-    chart_path = os.path.join(output_path, f"{TICKER}_DD_TimeSeries_{date.today()}.png")
+    chart_path = os.path.join(output_path, f"{TICKER}_DD_TimeSeries.png")
     try:
         fig.write_image(chart_path, width=1200, height=700, scale=1.5)
         print(f"DD time series chart saved: {chart_path}")
@@ -312,7 +285,7 @@ def create_dd_time_series_chart(df, output_path):
     return chart_path
 
 
-create_dd_time_series_chart(df_dd_hist, OUTPUT_DIR)
+create_dd_time_series_chart(df_dd_hist, VIZ_DIR)
 
 # endregion
 
@@ -417,7 +390,7 @@ def create_tornado_chart(sens_summary, dd_base_val, output_path):
     fig.update_xaxes(showgrid=False, showline=True, linecolor=BORDER,
                      zeroline=True, zerolinecolor=TEXT, zerolinewidth=1.5)
 
-    chart_path = os.path.join(output_path, f"{TICKER}_Tornado_{date.today()}.png")
+    chart_path = os.path.join(output_path, f"{TICKER}_Tornado.png")
     try:
         fig.write_image(chart_path, width=900, height=420, scale=1.5)
         print(f"Tornado chart saved: {chart_path}")
@@ -429,7 +402,7 @@ def create_tornado_chart(sens_summary, dd_base_val, output_path):
     return chart_path
 
 
-create_tornado_chart(sens_summary, dd_base_val, OUTPUT_DIR)
+create_tornado_chart(sens_summary, dd_base_val, VIZ_DIR)
 
 # endregion
 
@@ -528,7 +501,7 @@ def create_stress_chart(stress_results, output_path):
     )
     fig.update_xaxes(showgrid=False, showline=True, linecolor=BORDER)
 
-    chart_path = os.path.join(output_path, f"{TICKER}_StressTest_{date.today()}.png")
+    chart_path = os.path.join(output_path, f"{TICKER}_StressTest.png")
     try:
         fig.write_image(chart_path, width=900, height=520, scale=1.5)
         print(f"Stress test chart saved: {chart_path}")
@@ -540,7 +513,7 @@ def create_stress_chart(stress_results, output_path):
     return chart_path
 
 
-create_stress_chart(stress_results, OUTPUT_DIR)
+create_stress_chart(stress_results, VIZ_DIR)
 
 df_stress = pd.DataFrame([
     {
@@ -567,31 +540,7 @@ df_stress = pd.DataFrame([
 # Compared against market benchmarks by DD-based rating class.
 # ─────────────────────────────────────────────────────────────
 
-RATING_TABLE = [
-    ("AAA/AA",  8.0,  float("inf"),  30,   50),
-    ("A",       6.0,  8.0,           60,   90),
-    ("BBB",     4.0,  6.0,           120,  180),
-    ("BB",      2.0,  4.0,           250,  400),
-    ("B",       1.0,  2.0,           400,  650),
-    ("CCC",     0.0,  1.0,           800,  1200),
-]
-
-
-def get_rating_info(dd):
-    for rating, dd_min, dd_max, bps_lo, bps_hi in RATING_TABLE:
-        if dd >= dd_min and (dd < dd_max or dd_max == float("inf")):
-            return rating, bps_lo, bps_hi
-    return "CCC", 800, 1200
-
-
-def calculate_spread(pd_val, lgd=0.45):
-    pd_lgd = min(pd_val * lgd, 0.9999)
-    if pd_lgd <= 0:
-        return 0.0
-    return -np.log(1 - pd_lgd) / T
-
-
-basis_spread_bps            = calculate_spread(merton["pd"]) * 10000
+basis_spread_bps            = calculate_spread(merton["pd"], T) * 10000
 basis_rating, basis_lo, basis_hi = get_rating_info(merton["dd"])
 
 print(f"\n=== Credit Spread Analysis ===")
@@ -608,7 +557,7 @@ print("-" * 68)
 spread_records = []
 for scen in ["Bear", "Base", "Bull"]:
     sd          = stress_results[scen]
-    s_bps       = calculate_spread(sd["PD"]) * 10000
+    s_bps       = calculate_spread(sd["PD"], T) * 10000
     rat, lo, hi = get_rating_info(sd["DD"])
     valuation_flag = "UNDER" if s_bps < lo else ("OVER" if s_bps > hi else "WITHIN")
     bench_str   = f"{rat}: {lo}-{hi} bps"
@@ -680,7 +629,7 @@ def create_spread_chart(df_credit, output_path):
     )
     fig.update_xaxes(showgrid=False, showline=True, linecolor=BORDER)
 
-    chart_path = os.path.join(output_path, f"{TICKER}_CreditSpread_{date.today()}.png")
+    chart_path = os.path.join(output_path, f"{TICKER}_CreditSpread.png")
     try:
         fig.write_image(chart_path, width=900, height=480, scale=1.5)
         print(f"\nCredit spread chart saved: {chart_path}")
@@ -692,7 +641,7 @@ def create_spread_chart(df_credit, output_path):
     return chart_path
 
 
-create_spread_chart(df_credit, OUTPUT_DIR)
+create_spread_chart(df_credit, VIZ_DIR)
 
 # endregion
 
@@ -763,7 +712,7 @@ def create_merton_chart(prices, log_returns, merton_results, output_path):
     fig.update_yaxes(title_text="USD", row=1, col=1)
     fig.update_yaxes(title_text="σ (ann.)", tickformat=".0%", row=2, col=1)
 
-    chart_path = os.path.join(output_path, f"{TICKER}_Merton_{date.today()}.png")
+    chart_path = os.path.join(output_path, f"{TICKER}_Merton.png")
     try:
         fig.write_image(chart_path, width=1200, height=700, scale=1.5)
         print(f"\nChart saved: {chart_path}")
@@ -777,7 +726,7 @@ def create_merton_chart(prices, log_returns, merton_results, output_path):
     return chart_path
 
 
-create_merton_chart(prices, log_returns, merton, OUTPUT_DIR)
+create_merton_chart(prices, log_returns, merton, VIZ_DIR)
 
 # endregion
 
@@ -792,7 +741,7 @@ create_merton_chart(prices, log_returns, merton, OUTPUT_DIR)
 def export_excel(prices, log_returns, merton_results, df_dd, df_sens, df_stress, df_credit, output_path):
     """Export Merton results, market data, DD time series, sensitivity, stress test, and credit spreads to Excel."""
 
-    excel_path = os.path.join(output_path, f"{TICKER}_Merton_{date.today()}.xlsx")
+    excel_path = os.path.join(output_path, f"{TICKER}_Merton.xlsx")
 
     with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
 
@@ -849,10 +798,10 @@ def export_excel(prices, log_returns, merton_results, df_dd, df_sens, df_stress,
     return excel_path
 
 
-export_excel(prices, log_returns, merton, df_dd_hist, df_sens, df_stress, df_credit, OUTPUT_DIR)
+export_excel(prices, log_returns, merton, df_dd_hist, df_sens, df_stress, df_credit, EXCEL_DIR)
 
 print(f"\n{'='*60}")
-print(f"Done. Results in: {OUTPUT_DIR}")
+print(f"Done. Excel: {EXCEL_DIR}  |  Charts: {VIZ_DIR}")
 print(f"{'='*60}\n")
 
 # endregion
@@ -972,7 +921,7 @@ def create_migration_heatmap(migration_probs, output_path):
         height=480,
         margin=dict(l=80, r=40, t=110, b=80),
     )
-    chart_path = os.path.join(output_path, f"{TICKER}_RatingMigration_{date.today()}.png")
+    chart_path = os.path.join(output_path, f"{TICKER}_RatingMigration.png")
     try:
         fig.write_image(chart_path, width=800, height=480, scale=1.5)
         print(f"Migration heatmap saved: {chart_path}")
@@ -983,7 +932,7 @@ def create_migration_heatmap(migration_probs, output_path):
     return chart_path
 
 
-create_migration_heatmap(migration_probs, OUTPUT_DIR)
+create_migration_heatmap(migration_probs, VIZ_DIR)
 
 # endregion
 
@@ -1053,7 +1002,7 @@ def create_lgd_chart(df_lgd, output_path):
         height=460,
         margin=dict(l=60, r=40, t=110, b=60),
     )
-    chart_path = os.path.join(output_path, f"{TICKER}_LGD_Sensitivitaet_{date.today()}.png")
+    chart_path = os.path.join(output_path, f"{TICKER}_LGD_Sensitivitaet.png")
     try:
         fig.write_image(chart_path, width=900, height=460, scale=1.5)
         print(f"LGD sensitivity chart saved: {chart_path}")
@@ -1064,7 +1013,7 @@ def create_lgd_chart(df_lgd, output_path):
     return chart_path
 
 
-create_lgd_chart(df_lgd, OUTPUT_DIR)
+create_lgd_chart(df_lgd, VIZ_DIR)
 
 # endregion
 
@@ -1076,7 +1025,7 @@ create_lgd_chart(df_lgd, OUTPUT_DIR)
 # Read back by the Merton chart scripts (Dashboard, DD time series).
 # ─────────────────────────────────────────────────────────────
 
-REPORTS_BASE = config.OUTPUT_DIR   # C:\Python\Outputs\Reports\DCF_Merton_MC
+REPORTS_BASE = os.path.join(config.OUTPUT_DIR, "Excel")   # C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Excel
 os.makedirs(REPORTS_BASE, exist_ok=True)
 
 # 1. Summary — all 5 tickers
@@ -1112,7 +1061,7 @@ for _tkr in _ALL_TICKERS:
         "ECL_Stage":     _stage,
         "ECL_12M":       round(_m1y["pd"] * 0.45 * _D / 1e6, 4),
         "ECL_Lifetime":  round(_m5y["pd"] * 0.45 * _D / 1e6, 4),
-        "Spread_bps":    round(calculate_spread(_m["pd"]) * 10000, 2),
+        "Spread_bps":    round(calculate_spread(_m["pd"], _T) * 10000, 2),
     })
 df_summary_csv = pd.DataFrame(_summary_rows)
 
@@ -1126,7 +1075,7 @@ df_stress_csv = df_stress.copy()
 spreads_col = []
 for scen in df_stress_csv["Scenario"]:
     sd = stress_results[scen]
-    spreads_col.append(round(calculate_spread(sd["PD"]) * 10000, 2))
+    spreads_col.append(round(calculate_spread(sd["PD"], T) * 10000, 2))
 df_stress_csv["Spread_bps"] = spreads_col
 
 # 4. LGD_Sensitivity → df_lgd (already built in Block 11)
@@ -1178,7 +1127,7 @@ df_dd_pivot = df_dd_pivot[_pivot_col_order].reset_index().sort_values("Date").re
 
 def export_excel_portfolio(output_path):
     """Export all cross-ticker / dashboard datasets to one .xlsx workbook (one sheet each)."""
-    excel_path = os.path.join(output_path, f"Merton_Summary_{date.today()}.xlsx")
+    excel_path = os.path.join(output_path, "Merton_Summary.xlsx")
     with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
         df_summary_csv.to_excel(writer,   sheet_name="Summary",           index=False)
         df_dd_csv.to_excel(writer,        sheet_name="DD_TimeSeries",     index=False)
@@ -1282,7 +1231,7 @@ print("migration_counts = Counter matrix: how often a rating moved from X to Y (
 print("migration_probs  = Transition probabilities P(From → To)")
 print("df_lgd         = LGD sensitivity table: LGD × Scenario × EL/Spread/ECL")
 print("export_excel_portfolio() = Writes all cross-ticker / dashboard datasets to one .xlsx")
-print("Merton_Summary_*.xlsx = Workbook in Reports base dir (read back by the Merton chart scripts)")
+print("Merton_Summary.xlsx  = Workbook in Excel base dir (read back by the Merton chart scripts)")
 print("  Sheets: Summary, DD_TimeSeries, Stress_Test, LGD_Sensitivity, Rating_Migration,")
 print("          DD_TimeSeries_All, DD_Pivot")
 # endregion

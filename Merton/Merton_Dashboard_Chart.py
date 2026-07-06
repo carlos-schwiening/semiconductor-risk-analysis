@@ -4,7 +4,7 @@ Merton_Dashboard_Chart — 2x2 Structural Credit Risk Dashboard, Semiconductor S
 Run with: python Merton/Merton_Dashboard_Chart.py
 
   Block 0: Imports & Setup
-  Block 1: Load Data (Merton_Summary_*.xlsx from Reports folder)
+  Block 1: Load Data (Merton_Summary.xlsx from Excel folder)
   Block 2: Create 2x2 Subplot Chart
     Panel 1 (top-left):     DD Time Series — all 5 tickers
     Panel 2 (top-right):    Bubble Chart — DD vs. Credit Spread (Bn)
@@ -38,12 +38,13 @@ from plot_style import (
     GRAY_1,
 )
 
-OUTPUT_DIR  = r"C:\Python\Outputs\Reports\DCF_Merton_MC"
+EXCEL_DIR      = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Excel"
+VIZ_DIR        = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Visualisierung"
 TODAY          = date.today().strftime("%Y-%m-%d")
 RATING_ORDER   = ["AAA/AA", "A", "BBB", "BB", "B", "CCC"]
 TICKER_LIST    = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(VIZ_DIR, exist_ok=True)
 
 print(f"\n{'='*60}")
 print(f"Merton Dashboard Chart — {TODAY}")
@@ -52,12 +53,12 @@ print(f"{'='*60}")
 
 
 # region Block 1 - Load Data
-print("\nLoading data from Merton_Summary_*.xlsx ...")
+print("\nLoading data from Merton_Summary.xlsx ...")
 
-_xlsx_files = glob.glob(os.path.join(OUTPUT_DIR, "Merton_Summary_*.xlsx"))
+_xlsx_files = glob.glob(os.path.join(EXCEL_DIR, "Merton_Summary.xlsx"))
 if not _xlsx_files:
     raise FileNotFoundError(
-        f"No Merton_Summary_*.xlsx found under {OUTPUT_DIR}. "
+        f"No Merton_Summary.xlsx found under {EXCEL_DIR}. "
         f"Run Merton/Merton_Model.py first."
     )
 _xlsx_path = max(_xlsx_files, key=os.path.getmtime)
@@ -275,7 +276,7 @@ fig.add_annotation(
 )
 
 # Export PNG
-png_path = os.path.join(OUTPUT_DIR, f"Merton_Dashboard_{TODAY}.png")
+png_path = os.path.join(VIZ_DIR, "Merton_Dashboard.png")
 fig.write_image(png_path, width=CHART_WIDTH, height=CHART_HEIGHT, scale=CHART_SCALE)
 
 print(f"\nPNG saved:        {png_path}")

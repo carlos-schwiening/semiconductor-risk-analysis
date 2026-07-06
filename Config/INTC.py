@@ -28,5 +28,5 @@ SIMULATIONS      = 10000
 # endregion
 
 # region OUTPUT
-OUTPUT_DIR        = r"C:\Python\Outputs\Reports\DCF_Merton_MC"
+OUTPUT_DIR        = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs"
 # endregion

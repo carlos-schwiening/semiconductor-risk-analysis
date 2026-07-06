@@ -50,11 +50,13 @@ RISK_FREE_RATE = config.RISK_FREE_RATE
 WACC_CONFIG       = config.WACC_MEAN
 TERMINAL_GROWTH   = config.TERMINAL_GROWTH
 FORECAST_YEARS     = config.FORECAST_YEARS
-OUTPUT_DIR     = os.path.join(config.OUTPUT_DIR, ACTIVE_CONFIG)
+EXCEL_DIR      = os.path.join(config.OUTPUT_DIR, "Excel", ACTIVE_CONFIG)
+VIZ_DIR        = os.path.join(config.OUTPUT_DIR, "Visualisierung", ACTIVE_CONFIG)
 
 CACHE_FOLDER = r"C:\Python\Data\FMP\FMP_Cache"
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(EXCEL_DIR, exist_ok=True)
+os.makedirs(VIZ_DIR, exist_ok=True)
 
 # plot_style — central design template
 from plot_style import LAYOUT, BLUE_1, BLUE_2, BLUE_3, ORANGE_1, ORANGE_2, ORANGE_3, GRAY_1
@@ -493,7 +495,7 @@ fig3.update_layout(
     legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0, x=1.10, y=0.5),
 )
 
-chart3_path = os.path.join(OUTPUT_DIR, f"{TICKER}_DCF_Sensitivitaet_{date.today()}.png")
+chart3_path = os.path.join(VIZ_DIR, f"{TICKER}_DCF_Sensitivitaet.png")
 try:
     fig3.write_image(chart3_path, width=920, height=480, scale=1.5)
     print(f"\nHeatmap saved: {chart3_path}")
@@ -502,7 +504,7 @@ except Exception:
     fig3.write_html(html3_path)
     print(f"\nHeatmap (HTML) saved: {html3_path}")
 
-excel_path = os.path.join(OUTPUT_DIR, f"{TICKER}_DCF_Sensitivitaet_{date.today()}.xlsx")
+excel_path = os.path.join(EXCEL_DIR, f"{TICKER}_DCF_Sensitivitaet.xlsx")
 try:
     df_sens.round(2).to_excel(excel_path, sheet_name="DCF_Sensitivitaet")
     print(f"Excel saved: {excel_path}")
@@ -629,7 +631,7 @@ fig4.update_layout(
                 x=0.01, y=0.99, xanchor="left", yanchor="top"),
 )
 
-chart4_path = os.path.join(OUTPUT_DIR, f"{TICKER}_DCF_MonteCarlo_{date.today()}.png")
+chart4_path = os.path.join(VIZ_DIR, f"{TICKER}_DCF_MonteCarlo.png")
 try:
     fig4.write_image(chart4_path, width=900, height=460, scale=1.5)
     print(f"\nHistogram saved: {chart4_path}")
@@ -715,7 +717,7 @@ fig5.update_layout(
     height=420,
     margin=dict(l=60, r=60, t=90, b=60),
 )
-chart5_path = os.path.join(OUTPUT_DIR, f"{TICKER}_DCF_Szenarien_{date.today()}.png")
+chart5_path = os.path.join(VIZ_DIR, f"{TICKER}_DCF_Szenarien.png")
 try:
     fig5.write_image(chart5_path, width=800, height=420, scale=1.5)
     print(f"Scenario chart saved: {chart5_path}")
@@ -856,7 +858,7 @@ fig6.update_layout(
     height=420,
     margin=dict(l=60, r=40, t=90, b=60),
 )
-chart6_path = os.path.join(OUTPUT_DIR, f"PeerGroup_DCF_Vergleich_{date.today()}.png")
+chart6_path = os.path.join(VIZ_DIR, f"PeerGroup_DCF_Vergleich.png")
 try:
     fig6.write_image(chart6_path, width=900, height=420, scale=1.5)
     print(f"Peer chart saved: {chart6_path}")
@@ -1025,7 +1027,7 @@ df_g2_export.insert(0, "Date", _export_date)
 
 def export_excel_dcf(df_summary, df_scenarios, df_peer_grp, df_g2, output_path):
     """Export all DCF results to a single .xlsx workbook (one sheet per result set)."""
-    excel_path = os.path.join(output_path, f"DCF_Results_{TICKER}_{date.today()}.xlsx")
+    excel_path = os.path.join(output_path, f"DCF_Results_{TICKER}.xlsx")
     with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
         df_summary.to_excel(writer,   sheet_name="Summary",        index=False)
         df_scenarios.to_excel(writer, sheet_name="Scenarios",      index=False)
@@ -1034,7 +1036,7 @@ def export_excel_dcf(df_summary, df_scenarios, df_peer_grp, df_g2, output_path):
     return excel_path
 
 
-_dcf_xlsx_path = export_excel_dcf(df_dcf_summary, df_scen, df_peer_export, df_g2_export, OUTPUT_DIR)
+_dcf_xlsx_path = export_excel_dcf(df_dcf_summary, df_scen, df_peer_export, df_g2_export, EXCEL_DIR)
 print(f"\nExcel saved: {_dcf_xlsx_path}")
 print(f"  Summary        — {len(df_dcf_summary)} row(s)")
 print(f"  Scenarios      — {len(df_scen)} row(s)")
@@ -1211,7 +1213,7 @@ print("BENCH          = Semiconductor sector benchmarks: EV/EBITDA 15–25×, P/
 print("mult_ratings   = Dict: valuation rating per multiple (CHEAP / FAIR / EXPENSIVE)")
 print("mult_values    = Dict: calculated multiples per metric")
 print("export_excel_dcf() = Writes all DCF results to one .xlsx workbook (one sheet per set)")
-print("DCF_Results_*.xlsx = Workbook in OUTPUT_DIR/{TICKER}/ (read back by MCS for the peer summary)")
+print("DCF_Results_*.xlsx = Workbook in EXCEL_DIR/{TICKER}/ (read back by MCS for the peer summary)")
 print("  Sheet Summary        = All 5 tickers: WACC, Beta, FCF, DCF value, price, upside, valuation")
 print("  Sheet Scenarios      = Bear/Base/Bull for ACTIVE_CONFIG: WACC, g1, FCF, EV, Value/Share")
 print("  Sheet Peer_Group     = Peer group with DCF value, price, beta, WACC, valuation")

@@ -1,5 +1,7 @@
 __pycache__/
 *.pyc
+.pytest_cache/
+Outputs/
 *.xlsx
 *.png
 !images/*.png
@@ -10,3 +12,4 @@ Config/Api_keys.py
 bank_risk_model.py
 FMP_Downloader.py
 Analyse.ipynb
+CLAUDE.md

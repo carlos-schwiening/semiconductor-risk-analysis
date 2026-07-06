@@ -55,7 +55,7 @@ RISK_FREE_RATE = config.RISK_FREE_RATE
 MATURITY          = config.MATURITY
 
 CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
-OUTPUT_DIR = r"C:\Python\Outputs\Visualisierung"
+OUTPUT_DIR = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Visualisierung"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 from plot_style import LAYOUT, BLUE_1, BLUE_2, BLUE_3, ORANGE_1, ORANGE_2, ORANGE_3, GRAY_1
@@ -300,7 +300,7 @@ _TICKERS_5 = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 
 # Read the DCF peer summary from the latest DCF_Results_*.xlsx (written by DCF/DCF_Valuation.py).
 # The "Summary" sheet (peer group) is identical across tickers, so the most recent file is used.
-_REPORTS_BASE   = config.OUTPUT_DIR
+_REPORTS_BASE   = os.path.join(config.OUTPUT_DIR, "Excel")
 _dcf_xlsx_files = glob.glob(os.path.join(_REPORTS_BASE, "*", "DCF_Results_*.xlsx"))
 if not _dcf_xlsx_files:
     raise FileNotFoundError(
@@ -559,7 +559,7 @@ fig8.update_layout(
     margin=dict(l=60, r=40, t=100, b=60),
     legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0, x=0.68, y=0.99, xanchor="left", yanchor="top"),
 )
-_chart8_path = os.path.join(OUTPUT_DIR, f"Portfolio_Loss_Distribution_{date.today()}.png")
+_chart8_path = os.path.join(OUTPUT_DIR, "Portfolio_Loss_Distribution.png")
 try:
     fig8.write_image(_chart8_path, width=900, height=440, scale=1.5)
     print(f"\nChart saved: {_chart8_path}")
@@ -786,7 +786,7 @@ fig9.update_layout(
     height=380,
     margin=dict(l=60, r=60, t=80, b=60),
 )
-_chart9_path = os.path.join(OUTPUT_DIR, f"Convergence_VaR99_{date.today()}.png")
+_chart9_path = os.path.join(OUTPUT_DIR, "Convergence_VaR99.png")
 try:
     fig9.write_image(_chart9_path, width=800, height=380, scale=1.5)
     print(f"Convergence chart saved: {_chart9_path}")
@@ -890,7 +890,7 @@ fig10.update_layout(
     height=320,
     margin=dict(l=80, r=80, t=80, b=60),
 )
-_chart10_path = os.path.join(OUTPUT_DIR, f"Tornado_VaR99_{date.today()}.png")
+_chart10_path = os.path.join(OUTPUT_DIR, "Tornado_VaR99.png")
 try:
     fig10.write_image(_chart10_path, width=800, height=320, scale=1.5)
     print(f"Tornado chart saved: {_chart10_path}")
@@ -905,7 +905,7 @@ except Exception:
 # ─────────────────────────────────────────────────────────────
 # Exports all MCS results into a single .xlsx workbook with one
 # sheet per result set. Same output folder as Merton_Model.py
-# and DCF_Valuation.py: OUTPUT_DIR/{TICKER}/.
+# and DCF_Valuation.py: Excel/{TICKER}/.
 # ─────────────────────────────────────────────────────────────
 
 _export_date = date.today().isoformat()
@@ -976,7 +976,7 @@ print(df_risk_comp.to_string(index=False))
 
 def export_excel_mcs(df_portfolio, df_ticker, df_convergence, df_tornado, df_risk, output_path):
     """Export all MCS results to a single .xlsx workbook (one sheet per result set)."""
-    excel_path = os.path.join(output_path, f"MCS_Results_{TICKER}_{date.today()}.xlsx")
+    excel_path = os.path.join(output_path, f"MCS_Results_{TICKER}.xlsx")
     with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
         df_portfolio.to_excel(writer,   sheet_name="Portfolio",       index=False)
         df_ticker.to_excel(writer,      sheet_name="Ticker",          index=False)
@@ -986,7 +986,7 @@ def export_excel_mcs(df_portfolio, df_ticker, df_convergence, df_tornado, df_ris
     return excel_path
 
 
-_MCS_REPORTS_DIR = os.path.join(config.OUTPUT_DIR, ACTIVE_CONFIG)
+_MCS_REPORTS_DIR = os.path.join(config.OUTPUT_DIR, "Excel", ACTIVE_CONFIG)
 os.makedirs(_MCS_REPORTS_DIR, exist_ok=True)
 _mcs_xlsx_path = export_excel_mcs(df_ptf, df_tkr, df_conv, df_tor, df_risk_comp, _MCS_REPORTS_DIR)
 print(f"\nExcel saved: {_mcs_xlsx_path}")
@@ -1093,7 +1093,7 @@ print("_base_var_tor  = Base VaR99 without parameter override (tornado reference
 print("_ptf_var99_override() = Computes portfolio VaR99 with a parameter override")
 print("_tornado_rows  = List: Parameter, P10/P90 VaR99, impact — sorted by impact")
 print("export_excel_mcs() = Writes all MCS results to one .xlsx workbook (one sheet per set)")
-print("MCS_Results_*.xlsx = Workbook in OUTPUT_DIR/{TICKER}/ (same folder as Merton/DCF exports)")
+print("MCS_Results_*.xlsx = Workbook in Excel/{TICKER}/ (same folder as Merton/DCF exports)")
 print("  Sheet Portfolio       = 10,000 rows: portfolio value, regime, VaR per simulation")
 print("  Sheet Ticker          = 5 rows: sim statistics per ticker (Median, P10, P90, VaR/CVaR)")
 print("  Sheet Convergence     = 8 rows: VaR99 at N=100/250/.../10,000")

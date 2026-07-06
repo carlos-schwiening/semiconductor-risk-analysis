@@ -48,7 +48,7 @@ WACC_STD          = getattr(config, "WACC_STD",      0.015)
 GROWTH_STD      = getattr(config, "GROWTH_STD",  0.020)
 
 CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
-OUTPUT_DIR    = r"C:\Python\Outputs\Visualisierung"
+OUTPUT_DIR    = os.path.join(config.OUTPUT_DIR, "Reports", ACTIVE_CONFIG)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Design tokens — imported directly from plot_style.py (central color palette)
@@ -673,7 +673,7 @@ html = (
     '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
     '<meta charset="UTF-8">\n'
     '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-    f'<title>DCF Report — {TICKER} — {date.today()}</title>\n'
+    f'<title>DCF Report — {TICKER}</title>\n'
     '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"'
     ' rel="stylesheet">\n'
     '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>\n'
@@ -681,7 +681,7 @@ html = (
     '</head>\n<body>\n'
     '<nav class="navbar">\n'
     f'  <span class="navbar-title">DCF Valuation Report — {COMPANY} ({TICKER})</span>\n'
-    f'  <span class="navbar-sub">{date.today()} &nbsp;|&nbsp; Discounted Cash Flow Model</span>\n'
+    f'  <span class="navbar-sub">Discounted Cash Flow Model</span>\n'
     '</nav>\n'
     '<div class="container">\n'
     + _section("DCF Valuation Summary", s1_content)
@@ -690,12 +690,11 @@ html = (
     + _section("Sensitivity Analysis — WACC × Growth", s4_content)
     + _section("Monte Carlo Simulation", s5_content)
     + '</div>\n'
-    f'<div class="footer">Generated: {date.today()} &nbsp;|&nbsp; '
-    f'DCF Valuation Model &nbsp;|&nbsp; Data: Financial Modeling Prep API</div>\n'
+    f'<div class="footer">DCF Valuation Model &nbsp;|&nbsp; Data: Financial Modeling Prep API</div>\n'
     '</body>\n</html>'
 )
 
-html_path = os.path.join(OUTPUT_DIR, f"DCF_Report_{TICKER}_{date.today()}.html")
+html_path = os.path.join(OUTPUT_DIR, f"DCF_Report_{TICKER}.html")
 with open(html_path, "w", encoding="utf-8") as f:
     f.write(html)
 

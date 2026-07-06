@@ -34,7 +34,7 @@ if PROJECT_ROOT not in sys.path:
 
 TICKER_LIST   = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
-OUTPUT_DIR    = r"C:\Python\Outputs\Visualisierung"
+OUTPUT_DIR    = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Reports"
 NAVBAR_BG     = "#0B1220"
 SIDEBAR_BG    = "#F1F5F9"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -498,7 +498,7 @@ def create_html_report(results):
         '<head>\n'
         '<meta charset="UTF-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-        f'<title>Merton Risk Report — {date.today()}</title>\n'
+        '<title>Merton Risk Report</title>\n'
         '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">\n'
         '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>\n'
         '<style>' + _CSS + '</style>\n'
@@ -509,7 +509,7 @@ def create_html_report(results):
         '<body>\n'
         '<nav class="navbar">\n'
         f'  <span class="navbar-title">Merton Credit Risk Report</span>\n'
-        f'  <span class="navbar-sub">{date.today()} &nbsp;|&nbsp; Structural Credit Risk Model</span>\n'
+        f'  <span class="navbar-sub">Structural Credit Risk Model</span>\n'
         '</nav>\n'
     )
 
@@ -523,7 +523,7 @@ def create_html_report(results):
 
     footer = (
         f'<div class="footer">'
-        f'Generated: {date.today()} &nbsp;|&nbsp; Merton Structural Model &nbsp;|&nbsp; '
+        f'Merton Structural Model &nbsp;|&nbsp; '
         f'Data: Financial Modeling Prep API'
         f'</div>\n'
         '</body>\n</html>'
@@ -545,7 +545,7 @@ def create_html_report(results):
 print("\nGenerating HTML report ...")
 html_content = create_html_report(results)
 
-html_path = os.path.join(OUTPUT_DIR, f"Merton_Report_{date.today()}.html")
+html_path = os.path.join(OUTPUT_DIR, "Merton_Report.html")
 with open(html_path, "w", encoding="utf-8") as f:
     f.write(html_content)
 

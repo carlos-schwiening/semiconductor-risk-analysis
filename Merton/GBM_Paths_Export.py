@@ -6,7 +6,7 @@ Run with: python Merton/GBM_Paths_Export.py
   Block 0: Imports & Setup
   Block 1: Merton Calculation (all 5 tickers) — V0, sigma_V, D, DD, Rating
   Block 2: GBM Path Simulation (N_PATHS=30, T=252 trading days)
-  Block 3: Excel Export -> C:\\Python\\Outputs\\Reports\\DCF_Merton_MC\\GBM_Paths_{date}.xlsx
+  Block 3: Excel Export -> C:\\Python\\Projects\\Public\\semiconductor-risk-analysis\\Outputs\\Excel\\GBM_Paths.xlsx
 """
 
 # region Block 0 - Imports & Setup
@@ -31,7 +31,7 @@ if PROJECT_ROOT not in sys.path:
 
 TICKER_LIST    = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 CACHE_FOLDER   = r"C:\Python\Data\FMP\FMP_Cache"
-OUTPUT_DIR     = r"C:\Python\Outputs\Reports\DCF_Merton_MC"
+OUTPUT_DIR     = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Excel"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 N_PATHS = 30
@@ -178,7 +178,7 @@ print(f"\nTotal shape: {df_gbm.shape}")
 
 
 # region Block 3 - Excel Export
-xlsx_path = os.path.join(OUTPUT_DIR, f"GBM_Paths_{TODAY}.xlsx")
+xlsx_path = os.path.join(OUTPUT_DIR, "GBM_Paths.xlsx")
 with pd.ExcelWriter(xlsx_path, engine="openpyxl") as writer:
     df_gbm.to_excel(writer, sheet_name="GBM_Paths", index=False)
 

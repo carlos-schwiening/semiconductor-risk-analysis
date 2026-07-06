@@ -34,7 +34,7 @@ from plot_style import LAYOUT, ORANGE_1, GRAY_1, BG, TEXT, TICKER_COLORS
 
 TICKER_LIST   = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
-OUTPUT_DIR = r"C:\Python\Outputs\Reports\DCF_Merton_MC"
+OUTPUT_DIR = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Visualisierung"
 
 TODAY   = date.today().strftime("%Y-%m-%d")
 N_PATHS = 15      # 14 gray + 1 highlighted in ticker color
@@ -330,7 +330,7 @@ for tkr in TICKER_LIST:
     tkr_output = os.path.join(OUTPUT_DIR, tkr)
     os.makedirs(tkr_output, exist_ok=True)
     fig      = create_textbook_chart(tkr, ticker_params[tkr])
-    png_path = os.path.join(tkr_output, f"{tkr}_KMV_Textbook_{TODAY}.png")
+    png_path = os.path.join(tkr_output, f"{tkr}_KMV_Textbook.png")
     fig.write_image(png_path, width=1100, height=650, scale=2)
     saved_files.append(png_path)
     print("saved.")

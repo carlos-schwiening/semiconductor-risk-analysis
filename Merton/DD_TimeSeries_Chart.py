@@ -31,7 +31,7 @@ from plot_style import (
     AXIS_DEFAULTS, SOURCE_TEXT,
 )
 
-REPORTS_BASE = r"C:\Python\Outputs\Reports\DCF_Merton_MC"
+REPORTS_BASE = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Excel"
 IMAGES_DIR   = os.path.join(PROJECT_ROOT, "images")
 TODAY        = date.today().strftime("%Y-%m-%d")
 TICKER_LIST  = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
@@ -49,12 +49,12 @@ print(f"{'='*60}")
 
 
 # region Block 1 - Load Data
-print("\nLoading DD_TimeSeries_All from Merton_Summary_*.xlsx ...")
+print("\nLoading DD_TimeSeries_All from Merton_Summary.xlsx ...")
 
-_xlsx_files = glob.glob(os.path.join(REPORTS_BASE, "Merton_Summary_*.xlsx"))
+_xlsx_files = glob.glob(os.path.join(REPORTS_BASE, "Merton_Summary.xlsx"))
 if not _xlsx_files:
     raise FileNotFoundError(
-        f"No Merton_Summary_*.xlsx found under {REPORTS_BASE}. "
+        f"No Merton_Summary.xlsx found under {REPORTS_BASE}. "
         f"Run Merton/Merton_Model.py first."
     )
 _xlsx_path = max(_xlsx_files, key=os.path.getmtime)
@@ -160,7 +160,7 @@ print("DD              = Distance to Default (standard deviations to the default
 print("Date            = Quarterly reference date from the Merton time series")
 print("Ticker          = MCHP | INTC | ON | QCOM | MPWR")
 print("TICKER_COLORS   = Per-ticker color mapping from plot_style.py")
-print("REPORTS_BASE    = C:\\Python\\Outputs\\Reports\\DCF_Merton_MC (source: Merton_Summary_*.xlsx, sheet DD_TimeSeries_All)")
+print("REPORTS_BASE    = C:\\Python\\Projects\\Public\\semiconductor-risk-analysis\\Outputs\\Excel (source: Merton_Summary.xlsx, sheet DD_TimeSeries_All)")
 print("IMAGES_DIR      = images/ in repo root (DD_TimeSeries.png)")
 print("WIDTH/HEIGHT    = 1100 x 550 px  (README-optimized)")
 print("SCALE           = 2x  (2200 x 1100 px effective for sharp rendering)")
