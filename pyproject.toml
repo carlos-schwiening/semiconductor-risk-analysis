@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "mypy"]
+dev = ["pytest", "mypy", "pandas-stubs", "scipy-stubs"]
 
 [tool.setuptools]
 packages = ["Merton", "DCF", "MCS", "Config"]
