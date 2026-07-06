@@ -1,9 +1,9 @@
 """
 DCF_Merton_MC — Combined Risk Model (Merton + DCF + Monte Carlo)
 =======================================================================
-Run with: python Merton/Merton_Model.py
+Run with: python Merton/Merton_Model.py [--ticker MCHP]
 
-Select the active company above via ACTIVE_CONFIG.
+Select the active company via --ticker (default: MCHP | INTC | ON | QCOM | MPWR).
   Block 0: Imports & Setup
   Block 1: Load Data from FMP Cache
   Block 2: Merton Model (Distance to Default, PD)
@@ -19,20 +19,17 @@ Select the active company above via ACTIVE_CONFIG.
   Block 12: Excel Export (Portfolio / Dashboard feed)
 """
 
-# ─────────────────────────────────────────────────────────────
-ACTIVE_CONFIG = "MCHP"   # Change ticker: MCHP | INTC | ON | QCOM | MPWR
-# ─────────────────────────────────────────────────────────────
-
-
 # region Block 0 - Imports & Setup
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 import os
 import json
+import argparse
 import importlib
 import warnings
 from datetime import date
+from typing import Any, TypedDict, cast
 
 import numpy as np
 import pandas as pd
@@ -41,6 +38,13 @@ from plotly.subplots import make_subplots
 from scipy.stats import norm
 
 warnings.filterwarnings("ignore")
+
+# ─────────────────────────────────────────────────────────────
+_parser = argparse.ArgumentParser(description="Merton (1974) structural credit risk model for one ticker.")
+_parser.add_argument("--ticker", default="MCHP", choices=["MCHP", "INTC", "ON", "QCOM", "MPWR"],
+                      help="Ticker to analyze (default: MCHP)")
+ACTIVE_CONFIG = _parser.parse_args().ticker
+# ─────────────────────────────────────────────────────────────
 
 # Repo root (semiconductor-risk-analysis/) → for Config import
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -67,7 +71,19 @@ from plot_style import LAYOUT, BLUE_1, BLUE_2, BLUE_3, ORANGE_1, ORANGE_2, ORANG
 BG     = "#FFFFFF"; TEXT = "#1A1A1A"; BORDER = "#E5E5E5"; TEXT_MUTED = "#9CA3AF"
 
 # Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)
-from merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE
+try:
+    from .merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE
+except ImportError:  # running directly as a script (python Merton/Merton_Model.py)
+    from merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE  # type: ignore[import-not-found,no-redef]
+
+
+class MarketData(TypedDict):
+    prices: pd.Series
+    log_returns: pd.Series
+    sigma_e: float
+    total_debt: float
+    equity_book: float
+    market_cap: float
 
 # endregion
 
@@ -77,14 +93,14 @@ from merton_core import merton_model, get_rating_info, calculate_spread, RATING_
 # Loads price data, balance sheet, and key metrics from the local JSON cache.
 # ─────────────────────────────────────────────────────────────
 
-def load_json(filename):
+def load_json(filename: str) -> Any:
     """Load a JSON cache file and return its contents."""
     path = os.path.join(CACHE_FOLDER, filename)
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def load_market_data():
+def load_market_data() -> MarketData:
     """Load and process FMP cache data for the active ticker."""
 
     # Historical prices — newest first in API response, sort ascending
@@ -95,7 +111,7 @@ def load_market_data():
     prices       = df_prices["close"]
 
     # Daily log returns + annualized volatility (252 trading days)
-    log_returns  = np.log(prices / prices.shift(1)).dropna()
+    log_returns  = cast(pd.Series, np.log(prices / prices.shift(1))).dropna()
     sigma_e      = float(log_returns.std() * np.sqrt(252))
 
     # Balance sheet — index 0 = most recent fiscal year
@@ -173,7 +189,9 @@ print(f"Expected Loss (LGD=45%):   {merton['el'] / 1e6:.1f} Mn USD")
 # days (~1 quarter). Market cap = price × estimated share count.
 # ─────────────────────────────────────────────────────────────
 
-def calculate_historical_dd(prices, log_returns, total_debt, market_cap, r, T):
+def calculate_historical_dd(
+    prices: pd.Series, log_returns: pd.Series, total_debt: float, market_cap: float, r: float, T: float,
+) -> pd.DataFrame:
     """Rolling Merton DD sampled every 63 trading days over 5 years."""
     cutoff    = prices.index.max() - pd.DateOffset(years=5)
     prices_5y = prices[prices.index >= cutoff]
@@ -210,7 +228,7 @@ print(f"\n=== Historical DD Time Series ({len(df_dd_hist)} data points, 5 years)
 print(df_dd_hist[["DD", "PD", "Price", "sigma_E"]].round(4).to_string())
 
 
-def create_dd_time_series_chart(df, output_path):
+def create_dd_time_series_chart(df: pd.DataFrame, output_path: str) -> str:
     """Two-panel chart: rolling DD with reference lines + stock price."""
     fig = make_subplots(
         rows=2, cols=1,
@@ -343,7 +361,9 @@ for label, dd_lo, dd_hi, impact in sens_summary:
     print(f"{label:<22} {dd_lo:>9.4f} {dd_base_val:>9.4f} {dd_hi:>9.4f} {impact:>10.4f}")
 
 
-def create_tornado_chart(sens_summary, dd_base_val, output_path):
+def create_tornado_chart(
+    sens_summary: list[tuple[str, float, float, float]], dd_base_val: float, output_path: str,
+) -> str:
     """Horizontal tornado chart: ΔDD at ±30% per variable, sorted by influence."""
     sorted_asc   = sorted(sens_summary, key=lambda x: x[3])  # smallest at bottom
     labels_chart = [s[0] for s in sorted_asc]
@@ -415,21 +435,21 @@ create_tornado_chart(sens_summary, dd_base_val, VIZ_DIR)
 #   Bull: upswing       — price +25%, vol −20%, debt −10%
 # ─────────────────────────────────────────────────────────────
 
-SCENARIOS = {
+SCENARIOS: dict[str, dict[str, Any]] = {
     "Bear": {"E": E * 0.60, "D": D * 1.10, "sigma_e": sigma_e * 1.50, "color": ORANGE_2},
     "Base": {"E": E,        "D": D,         "sigma_e": sigma_e,         "color": BLUE_1},
     "Bull": {"E": E * 1.25, "D": D * 0.90,  "sigma_e": sigma_e * 0.80, "color": BLUE_2},
 }
 
 
-def rating_assessment(dd):
+def rating_assessment(dd: float) -> str:
     if dd > 6:   return "AA/A  — very safe"
     elif dd > 4: return "BBB   — investment grade"
     elif dd > 2: return "BB/B  — sub-investment grade"
     else:        return "CCC   — critical"
 
 
-stress_results = {}
+stress_results: dict[str, dict[str, Any]] = {}
 for scen, params in SCENARIOS.items():
     res = merton_model(params["E"], params["D"], r, T, params["sigma_e"])
     stress_results[scen] = {
@@ -448,7 +468,7 @@ for scen, sd in stress_results.items():
     print(f"{scen:<8} {sd['V']/1e9:>9.2f} {sd['DD']:>8.4f} {sd['PD']:>10.4%} {sd['EL']/1e6:>10.2f}  {sd['Rating']}")
 
 
-def create_stress_chart(stress_results, output_path):
+def create_stress_chart(stress_results: dict[str, dict[str, Any]], output_path: str) -> str:
     """Grouped bar chart: DD (primary y-axis) and PD% (secondary y-axis) per scenario."""
     scenarios = list(stress_results.keys())
     dd_vals   = [stress_results[s]["DD"] for s in scenarios]
@@ -576,7 +596,7 @@ for scen in ["Bear", "Base", "Bull"]:
 df_credit = pd.DataFrame(spread_records)
 
 
-def create_spread_chart(df_credit, output_path):
+def create_spread_chart(df_credit: pd.DataFrame, output_path: str) -> str:
     """Grouped bar chart: model spread vs. benchmark midpoint with error bars."""
     scenarios    = df_credit["Scenario"].tolist()
     spreads      = df_credit["Spread_bps"].tolist()
@@ -653,7 +673,9 @@ create_spread_chart(df_credit, VIZ_DIR)
 #   Panel 2: Rolling 30-day volatility (annualized)
 # ─────────────────────────────────────────────────────────────
 
-def create_merton_chart(prices, log_returns, merton_results, output_path):
+def create_merton_chart(
+    prices: pd.Series, log_returns: pd.Series, merton_results: dict[str, float], output_path: str,
+) -> str:
     """Two-panel plotly chart: stock price (2y) + 30d rolling volatility."""
 
     cutoff    = prices.index.max() - pd.DateOffset(years=2)
@@ -738,7 +760,11 @@ create_merton_chart(prices, log_returns, merton, VIZ_DIR)
 #   Sheet 2: Marktdaten — prices, log returns, rolling volatility
 # ─────────────────────────────────────────────────────────────
 
-def export_excel(prices, log_returns, merton_results, df_dd, df_sens, df_stress, df_credit, output_path):
+def export_excel(
+    prices: pd.Series, log_returns: pd.Series, merton_results: dict[str, float],
+    df_dd: pd.DataFrame, df_sens: pd.DataFrame, df_stress: pd.DataFrame, df_credit: pd.DataFrame,
+    output_path: str,
+) -> str:
     """Export Merton results, market data, DD time series, sensitivity, stress test, and credit spreads to Excel."""
 
     excel_path = os.path.join(output_path, f"{TICKER}_Merton.xlsx")
@@ -867,7 +893,7 @@ print(f"{'ECL (current stage, Mn)':<30} {ecl_used/1e6:>14.3f}")
 RATINGS_ORDERED = ["AAA/AA", "A", "BBB", "BB", "B", "CCC"]
 
 
-def dd_to_rating(dd):
+def dd_to_rating(dd: float) -> str:
     if dd >= 8:   return "AAA/AA"
     elif dd >= 6: return "A"
     elif dd >= 4: return "BBB"
@@ -894,7 +920,7 @@ print("\nTransition probabilities:")
 print(migration_probs.round(4).to_string())
 
 
-def create_migration_heatmap(migration_probs, output_path):
+def create_migration_heatmap(migration_probs: pd.DataFrame, output_path: str) -> str:
     z_vals = migration_probs.values.tolist()
     text_vals = [[f"{v:.0%}" if v > 0 else "" for v in row] for row in z_vals]
 
@@ -977,7 +1003,7 @@ for lgd in LGD_VALUES:
     print(f"{lgd:>6.0%}  {el_bear:>12.2f} {el_base:>12.2f} {el_bull:>12.2f}  {sp_base:>18.1f}")
 
 
-def create_lgd_chart(df_lgd, output_path):
+def create_lgd_chart(df_lgd: pd.DataFrame, output_path: str) -> str:
     colors_scenario = {"Bear": ORANGE_2, "Base": BLUE_1, "Bull": BLUE_2}
     fig = go.Figure()
     for scen in ["Bear", "Base", "Bull"]:
@@ -1034,10 +1060,10 @@ _summary_rows = []
 for _tkr in _ALL_TICKERS:
     _cfg  = importlib.import_module(f"Config.{_tkr}")
     _raw  = load_json(f"{_tkr}_historical-price-eod_full.json")
-    _pr   = pd.DataFrame(_raw)
-    _pr["date"] = pd.to_datetime(_pr["date"])
-    _pr   = _pr.sort_values("date").set_index("date")["close"]
-    _se   = float(np.log(_pr / _pr.shift(1)).dropna().std() * np.sqrt(252))
+    _pr_df = pd.DataFrame(_raw)
+    _pr_df["date"] = pd.to_datetime(_pr_df["date"])
+    _pr   = _pr_df.sort_values("date").set_index("date")["close"]
+    _se   = float(cast(pd.Series, np.log(_pr / _pr.shift(1))).dropna().std() * np.sqrt(252))
     _bs   = load_json(f"{_tkr}_balance-sheet-statement.json")[0]
     _km   = load_json(f"{_tkr}_key-metrics.json")[0]
     _E    = float(_km.get("marketCap", 0) or 0)
@@ -1084,8 +1110,8 @@ df_stress_csv["Spread_bps"] = spreads_col
 migration_flat = []
 for from_rating in RATINGS_ORDERED:
     for to_rating in RATINGS_ORDERED:
-        count = int(migration_counts.loc[from_rating, to_rating])
-        prob  = round(float(migration_probs.loc[from_rating, to_rating]), 4)
+        count = int(cast(int, migration_counts.loc[from_rating, to_rating]))
+        prob  = round(float(cast(float, migration_probs.loc[from_rating, to_rating])), 4)
         migration_flat.append({
             "From_Rating":  from_rating,
             "To_Rating":    to_rating,
@@ -1099,10 +1125,10 @@ _dd_alle_rows = []
 for _tkr in _ALL_TICKERS:
     _cfg_t = importlib.import_module(f"Config.{_tkr}")
     _raw_t = load_json(f"{_tkr}_historical-price-eod_full.json")
-    _pr_t  = pd.DataFrame(_raw_t)
-    _pr_t["date"] = pd.to_datetime(_pr_t["date"])
-    _pr_t  = _pr_t.sort_values("date").set_index("date")["close"]
-    _lr_t  = np.log(_pr_t / _pr_t.shift(1)).dropna()
+    _pr_t_df = pd.DataFrame(_raw_t)
+    _pr_t_df["date"] = pd.to_datetime(_pr_t_df["date"])
+    _pr_t  = _pr_t_df.sort_values("date").set_index("date")["close"]
+    _lr_t  = cast(pd.Series, np.log(_pr_t / _pr_t.shift(1))).dropna()
     _bs_t  = load_json(f"{_tkr}_balance-sheet-statement.json")[0]
     _km_t  = load_json(f"{_tkr}_key-metrics.json")[0]
     _E_t   = float(_km_t.get("marketCap", 0) or 0)
@@ -1125,7 +1151,7 @@ _pivot_col_order = [f"{t}_DD" for t in _ALL_TICKERS if f"{t}_DD" in df_dd_pivot.
 df_dd_pivot = df_dd_pivot[_pivot_col_order].reset_index().sort_values("Date").reset_index(drop=True)
 
 
-def export_excel_portfolio(output_path):
+def export_excel_portfolio(output_path: str) -> str:
     """Export all cross-ticker / dashboard datasets to one .xlsx workbook (one sheet each)."""
     excel_path = os.path.join(output_path, "Merton_Summary.xlsx")
     with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:

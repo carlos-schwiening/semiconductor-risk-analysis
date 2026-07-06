@@ -1,7 +1,7 @@
 """
 DCF_Report — HTML Valuation Report (DCF Model)
 ================================================
-Run with: python DCF/DCF_Report.py
+Run with: python DCF/DCF_Report.py [--ticker MCHP]
 
   Block 0: Imports & Setup
   Block 1: All Calculations (FMP → WACC → DCF → Sensitivity → MC)
@@ -9,16 +9,13 @@ Run with: python DCF/DCF_Report.py
   Block 3: Generate and Open HTML Report
 """
 
-# ─────────────────────────────────────────────────────────────
-ACTIVE_CONFIG = "MCHP"  # Change ticker: MCHP | INTC | ON | QCOM | MPWR
-# ─────────────────────────────────────────────────────────────
-
 # region Block 0 - Imports & Setup
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 import os
 import json
+import argparse
 import importlib
 import warnings
 import webbrowser
@@ -31,6 +28,13 @@ import plotly.graph_objects as go
 warnings.filterwarnings("ignore")
 
 debug = False
+
+# ─────────────────────────────────────────────────────────────
+_parser = argparse.ArgumentParser(description="DCF valuation HTML report for one ticker.")
+_parser.add_argument("--ticker", default="MCHP", choices=["MCHP", "INTC", "ON", "QCOM", "MPWR"],
+                      help="Ticker to analyze (default: MCHP)")
+ACTIVE_CONFIG = _parser.parse_args().ticker
+# ─────────────────────────────────────────────────────────────
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -722,7 +726,7 @@ if fair_combos:
 
 # region Legende
 print("\n=== Legende ===")
-print("ACTIVE_CONFIG    = Ticker code for Config import (switchable above)")
+print("ACTIVE_CONFIG    = Ticker code for Config import (set via --ticker, default MCHP)")
 print("chart1..4_html   = Plotly charts as HTML snippets (no standalone Plotly JS)")
 print("_CONF            = Plotly displayModeBar configuration (no Plotly logo)")
 print("_LAYOUT          = Shared Plotly layout parameters (bgcolor, template, font)")

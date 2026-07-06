@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package + dev dependencies
+        run: pip install -e ".[dev]"
+
+      # Scoped to the two modules with full type hints so far (Merton_Model.py,
+      # merton_core.py). DCF_Valuation.py, DCF_Report.py, and Monte_Carlo_Sim.py are
+      # not yet type-annotated and have known pre-existing mypy findings; widen this
+      # scope once they are cleaned up.
+      - name: Type check (mypy)
+        run: mypy Merton/Merton_Model.py Merton/merton_core.py
+
+      - name: Run tests (pytest)
+        run: pytest -v

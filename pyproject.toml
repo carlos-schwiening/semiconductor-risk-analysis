@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "semiconductor-risk-analysis"
+version = "0.1.0"
+description = "Quantitative credit risk and equity valuation models (Merton 1974, DCF, Monte Carlo) applied to five U.S. semiconductor companies."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "plotly",
+    "kaleido",
+    "openpyxl",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy"]
+
+[tool.setuptools]
+packages = ["Merton", "DCF", "MCS", "Config"]

@@ -191,13 +191,21 @@ Python 3.14 · pandas · numpy · scipy · plotly · openpyxl
 ```bash
 git clone https://github.com/carlos-schwiening/semiconductor-risk-analysis
 cd semiconductor-risk-analysis
-pip install pandas numpy scipy plotly openpyxl
-python Merton/Merton_Model.py
-python DCF/DCF_Valuation.py
-python MCS/Monte_Carlo_Sim.py
+pip install -e .
+python Merton/Merton_Model.py --ticker MCHP
+python DCF/DCF_Valuation.py --ticker MCHP
+python MCS/Monte_Carlo_Sim.py --ticker MCHP
 ```
 
-Each script is self-contained and runs against a local FMP cache. Set `ACTIVE_CONFIG` at the top of each file to switch the active ticker.
+This installs the project as a package (see `pyproject.toml`), so `Merton`,
+`DCF`, `MCS`, and `Config` can be imported cleanly without path hacks.
+Each script is self-contained and runs against a local FMP cache. Switch the
+active ticker via `--ticker` (`MCHP` | `INTC` | `ON` | `QCOM` | `MPWR`,
+defaults to `MCHP`) — no code editing needed. `Merton_Report.py` and the
+other multi-ticker scripts process all five tickers regardless of `--ticker`;
+`DCF_Valuation.py`'s peer-group comparison block and `Monte_Carlo_Sim.py`'s
+correlated portfolio simulation likewise always include all five tickers
+alongside the `--ticker`-selected one.
 
 ---
 

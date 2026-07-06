@@ -1,7 +1,7 @@
 """
 DCF_Valuation — Discounted Cash Flow Valuation Model
 ======================================================
-Run with: python DCF/DCF_Valuation.py
+Run with: python DCF/DCF_Valuation.py [--ticker MCHP]
 
   Block 0: Imports & Setup
   Block 1: Load FMP Data + WACC Calculation (CAPM)
@@ -14,17 +14,13 @@ Run with: python DCF/DCF_Valuation.py
   Block 8: Excel Export (DCF_Results_{TICKER}_{date}.xlsx)
 """
 
-# ─────────────────────────────────────────────────────────────
-ACTIVE_CONFIG = "MCHP"  # Change ticker: MCHP | INTC | ON | QCOM | MPWR
-# ─────────────────────────────────────────────────────────────
-
-
 # region Block 0 - Imports & Setup
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 import os
 import json
+import argparse
 import importlib
 import warnings
 from datetime import date
@@ -35,6 +31,13 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 debug = False
+
+# ─────────────────────────────────────────────────────────────
+_parser = argparse.ArgumentParser(description="DCF valuation model for one ticker.")
+_parser.add_argument("--ticker", default="MCHP", choices=["MCHP", "INTC", "ON", "QCOM", "MPWR"],
+                      help="Ticker to analyze (default: MCHP)")
+ACTIVE_CONFIG = _parser.parse_args().ticker
+# ─────────────────────────────────────────────────────────────
 
 # Project root = semiconductor-risk-analysis/ (1 level up from DCF/)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

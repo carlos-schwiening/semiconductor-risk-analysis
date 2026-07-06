@@ -1,7 +1,7 @@
 """
 Monte_Carlo_Sim — Quantitative Portfolio Risk Model (DCF + Merton)
 ======================================================================
-Run with: python MCS/Monte_Carlo_Sim.py
+Run with: python MCS/Monte_Carlo_Sim.py [--ticker MCHP]
 
   Block 0:  Imports & Setup
   Block 1:  Portfolio Setup (PD via Merton, Vasicek parameters)
@@ -18,11 +18,6 @@ Run with: python MCS/Monte_Carlo_Sim.py
   Block 11: Excel Export (MCS_Results_{TICKER}_{date}.xlsx)
 """
 
-# ─────────────────────────────────────────────────────────────
-ACTIVE_CONFIG = "MCHP"  # Change ticker: MCHP | INTC | ON | QCOM | MPWR
-# ─────────────────────────────────────────────────────────────
-
-
 # region Block 0 - Imports & Setup
 import sys
 import io
@@ -30,6 +25,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 import os
 import glob
 import json
+import argparse
 import importlib
 import warnings
 from datetime import date
@@ -42,6 +38,13 @@ from scipy.stats import norm
 warnings.filterwarnings("ignore")
 
 debug = False
+
+# ─────────────────────────────────────────────────────────────
+_parser = argparse.ArgumentParser(description="Monte Carlo portfolio risk model, active ticker for single-name blocks.")
+_parser.add_argument("--ticker", default="MCHP", choices=["MCHP", "INTC", "ON", "QCOM", "MPWR"],
+                      help="Ticker to analyze (default: MCHP)")
+ACTIVE_CONFIG = _parser.parse_args().ticker
+# ─────────────────────────────────────────────────────────────
 
 # Project root = semiconductor-risk-analysis/ (1 level up from MCS/)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
