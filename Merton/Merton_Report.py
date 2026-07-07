@@ -22,7 +22,6 @@ from datetime import date
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from scipy.stats import norm
 
 warnings.filterwarnings("ignore")
 
@@ -44,6 +43,12 @@ from plot_style import BLUE_1, BLUE_2, ORANGE_1, ORANGE_2, GRAY_1, TEXT, BG
 BORDER     = "#E5E5E5"
 TEXT_MUTED = "#888888"
 
+# Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)
+try:
+    from .merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE
+except ImportError:  # running directly as a script (python Merton/Merton_Report.py)
+    from merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE  # type: ignore[import-not-found,no-redef]
+
 # endregion
 
 
@@ -58,29 +63,6 @@ def load_json(filename):
     path = os.path.join(CACHE_FOLDER, filename)
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
-
-def merton_model(E, D, r, T, sigma_e, max_iter=1000, tol=1e-6):
-    """Iterative Merton (1974) model. Returns dict: V, sigma_v, dd, pd, el."""
-    V       = E + D
-    sigma_v = sigma_e * (E / V)
-    for _ in range(max_iter):
-        sqrt_t = np.sqrt(T)
-        d1     = (np.log(V / D) + (r + 0.5 * sigma_v ** 2) * T) / (sigma_v * sqrt_t)
-        d2     = d1 - sigma_v * sqrt_t
-        e_mod  = V * norm.cdf(d1) - D * np.exp(-r * T) * norm.cdf(d2)
-        se_mod = (V / E) * norm.cdf(d1) * sigma_v
-        v_new  = V * (E / e_mod)
-        sv_new = sigma_e * (E / v_new)
-        if abs(v_new - V) < tol and abs(sv_new - sigma_v) < tol:
-            V, sigma_v = v_new, sv_new
-            break
-        V, sigma_v = v_new, sv_new
-    sqrt_t = np.sqrt(T)
-    dd     = (np.log(V / D) + (r - 0.5 * sigma_v ** 2) * T) / (sigma_v * sqrt_t)
-    pd_val = float(norm.cdf(-dd))
-    el     = pd_val * D * 0.45
-    return {"V": V, "sigma_v": sigma_v, "dd": dd, "pd": pd_val, "el": el}
 
 
 def calculate_historical_dd(prices, log_returns, total_debt, market_cap, r, T):
@@ -103,30 +85,6 @@ def calculate_historical_dd(prices, log_returns, total_debt, market_cap, r, T):
         except Exception:
             continue
     return pd.DataFrame(records).set_index("Date") if records else pd.DataFrame()
-
-
-RATING_TABLE = [
-    ("AAA/AA",  8.0,  float("inf"),  30,    50),
-    ("A",       6.0,  8.0,           60,    90),
-    ("BBB",     4.0,  6.0,           120,  180),
-    ("BB",      2.0,  4.0,           250,  400),
-    ("B",       1.0,  2.0,           400,  650),
-    ("CCC",     0.0,  1.0,           800, 1200),
-]
-
-
-def get_rating_info(dd):
-    for rating, dd_min, dd_max, bps_lo, bps_hi in RATING_TABLE:
-        if dd_min <= dd < dd_max or (dd_max == float("inf") and dd >= dd_min):
-            return rating, bps_lo, bps_hi
-    return "CCC", 800, 1200
-
-
-def calculate_spread(pd_val, T, lgd=0.45):
-    pd_lgd = min(pd_val * lgd, 0.9999)
-    if pd_lgd <= 0:
-        return 0.0
-    return -np.log(1 - pd_lgd) / T
 
 
 def load_ticker_data(ticker):

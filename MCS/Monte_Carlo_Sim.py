@@ -64,6 +64,12 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 from plot_style import LAYOUT, BLUE_1, BLUE_2, BLUE_3, ORANGE_1, ORANGE_2, ORANGE_3, GRAY_1
 BG     = "#FFFFFF"; TEXT = "#1A1A1A"; BORDER = "#E5E5E5"; TEXT_MUTED = "#9CA3AF"
 
+# Pure calculation functions — centralized in Merton/merton_core.py (no I/O, safe to unit test).
+# Cross-package import (MCS/ -> Merton/): a relative import doesn't apply here since the two
+# modules live in different packages, but PROJECT_ROOT is already on sys.path above, so this
+# absolute import resolves the same way whether run as an installed package or as a direct script.
+from Merton.merton_core import merton_model
+
 # endregion
 
 
@@ -73,29 +79,6 @@ BG     = "#FFFFFF"; TEXT = "#1A1A1A"; BORDER = "#E5E5E5"; TEXT_MUTED = "#9CA3AF"
 def _load_json(filename):
     with open(os.path.join(CACHE_FOLDER, filename), "r", encoding="utf-8") as f:
         return json.load(f)
-
-
-def merton_model(E, D, r, T, sigma_e, max_iter=1000, tol=1e-6):
-    """Iterative Merton (1974) model. Returns dict: V, sigma_v, dd, pd, el."""
-    V       = E + D
-    sigma_v = sigma_e * (E / V)
-    for _ in range(max_iter):
-        sqrt_t = np.sqrt(T)
-        d1     = (np.log(V / D) + (r + 0.5 * sigma_v ** 2) * T) / (sigma_v * sqrt_t)
-        d2     = d1 - sigma_v * sqrt_t
-        e_mod  = V * norm.cdf(d1) - D * np.exp(-r * T) * norm.cdf(d2)
-        sv_mod = (V / E) * norm.cdf(d1) * sigma_v
-        v_new  = V * (E / e_mod)
-        sv_new = sigma_e * (E / v_new)
-        if abs(v_new - V) < tol and abs(sv_new - sigma_v) < tol:
-            V, sigma_v = v_new, sv_new
-            break
-        V, sigma_v = v_new, sv_new
-    sqrt_t = np.sqrt(T)
-    dd     = (np.log(V / D) + (r - 0.5 * sigma_v ** 2) * T) / (sigma_v * sqrt_t)
-    pd_val = float(norm.cdf(-dd))
-    return {"V": V, "sigma_v": sigma_v, "dd": dd, "pd": pd_val,
-            "el": pd_val * D * 0.45}
 
 
 # ── Load Merton PD for the active company ────────────────

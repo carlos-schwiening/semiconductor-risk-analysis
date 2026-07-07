@@ -21,7 +21,6 @@ from datetime import date
 
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
 
 warnings.filterwarnings("ignore")
 
@@ -33,6 +32,12 @@ TICKER_LIST    = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 CACHE_FOLDER   = r"C:\Python\Data\FMP\FMP_Cache"
 OUTPUT_DIR     = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Excel"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)
+try:
+    from .merton_core import merton_model
+except ImportError:  # running directly as a script (python Merton/GBM_Paths_Export.py)
+    from merton_core import merton_model  # type: ignore[import-not-found,no-redef]
 
 N_PATHS = 30
 T       = 252
@@ -49,26 +54,6 @@ def load_json(filename):
     """Load a JSON cache file from CACHE_FOLDER."""
     with open(os.path.join(CACHE_FOLDER, filename), "r", encoding="utf-8") as f:
         return json.load(f)
-
-
-def merton_model(E, D, r, T_val, sigma_e, max_iter=1000, tol=1e-6):
-    """Iterative Merton (1974) model. Returns V, sigma_v, dd, pd."""
-    V       = E + D
-    sigma_v = sigma_e * (E / V)
-    for _ in range(max_iter):
-        sqrt_t = np.sqrt(T_val)
-        d1     = (np.log(V / D) + (r + 0.5 * sigma_v**2) * T_val) / (sigma_v * sqrt_t)
-        d2     = d1 - sigma_v * sqrt_t
-        e_mod  = V * norm.cdf(d1) - D * np.exp(-r * T_val) * norm.cdf(d2)
-        v_new  = V * (E / e_mod)
-        sv_new = sigma_e * (E / v_new)
-        if abs(v_new - V) < tol and abs(sv_new - sigma_v) < tol:
-            V, sigma_v = v_new, sv_new
-            break
-        V, sigma_v = v_new, sv_new
-    sqrt_t = np.sqrt(T_val)
-    dd     = (np.log(V / D) + (r - 0.5 * sigma_v**2) * T_val) / (sigma_v * sqrt_t)
-    return {"V": V, "sigma_v": sigma_v, "dd": dd, "pd": float(norm.cdf(-dd))}
 
 
 _RATING_THRESHOLDS = [

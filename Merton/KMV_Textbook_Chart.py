@@ -32,6 +32,12 @@ if PROJECT_ROOT not in sys.path:
 
 from plot_style import LAYOUT, ORANGE_1, GRAY_1, BG, TEXT, TICKER_COLORS
 
+# Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)
+try:
+    from .merton_core import merton_model
+except ImportError:  # running directly as a script (python Merton/KMV_Textbook_Chart.py)
+    from merton_core import merton_model  # type: ignore[import-not-found,no-redef]
+
 TICKER_LIST   = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
 OUTPUT_DIR = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Visualisierung"
@@ -50,25 +56,6 @@ print(f"{'='*60}")
 def load_json(filename):
     with open(os.path.join(CACHE_FOLDER, filename), "r", encoding="utf-8") as f:
         return json.load(f)
-
-
-def merton_model(E, D, r, T_val, sigma_e, max_iter=1000, tol=1e-6):
-    """Iterative Merton (1974). Returns V, sigma_v, dd, pd."""
-    V, sigma_v = E + D, sigma_e * (E / (E + D))
-    for _ in range(max_iter):
-        st    = np.sqrt(T_val)
-        d1    = (np.log(V / D) + (r + 0.5 * sigma_v**2) * T_val) / (sigma_v * st)
-        d2    = d1 - sigma_v * st
-        e_mod = V * norm.cdf(d1) - D * np.exp(-r * T_val) * norm.cdf(d2)
-        v_new = V * (E / e_mod)
-        sv_new = sigma_e * (E / v_new)
-        if abs(v_new - V) < tol and abs(sv_new - sigma_v) < tol:
-            V, sigma_v = v_new, sv_new
-            break
-        V, sigma_v = v_new, sv_new
-    st = np.sqrt(T_val)
-    dd = (np.log(V / D) + (r - 0.5 * sigma_v**2) * T_val) / (sigma_v * st)
-    return {"V": V, "sigma_v": sigma_v, "dd": dd, "pd": float(norm.cdf(-dd))}
 
 
 print("\nMerton calculation (all 5 tickers):")
