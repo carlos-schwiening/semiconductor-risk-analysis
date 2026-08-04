@@ -2,6 +2,12 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .mypy_cache/
+
+# Virtual environments (never portable between machines)
+.venv/
+venv/
+env/
+
 build/
 dist/
 *.egg-info/
