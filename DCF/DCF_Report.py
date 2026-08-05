@@ -142,6 +142,14 @@ wacc         = wacc_res["wacc_calc"]
 
 # ── 1c: DCF Base Case ────────────────────────────────────────
 fcf_norm           = float(np.median(fcf))
+
+# With a negative normalized FCF the DCF still returns a number, but it is the
+# present value of continued cash burn — not an intrinsic value. Flagged in the
+# terminal and as a banner in the report itself (see Section 1).
+fcf_norm_negative  = fcf_norm <= 0
+if fcf_norm_negative:
+    print(f"  [!] Normalized FCF is {fcf_norm/1e9:.2f} Bn USD — negative. The DCF figures in")
+    print(f"      this report are not a valuation; the report states this at the top.")
 g1                 = getattr(config, "GROWTH_MEAN", 0.05)
 g2                 = TERMINAL_GROWTH
 current_price       = float(prices_ticker.iloc[-1])
@@ -480,6 +488,16 @@ _CSS = """
     .badge-red   { background: #fdecea; color: #C0392B; }
     .badge-green { background: #e8f5e9; color: #1B4332; }
     .badge-blue  { background: #e8f0fd; color: #1D6FD8; }
+    .model-warning {
+        background: #fdecea;
+        color: #C0392B;
+        border-left: 4px solid #C0392B;
+        border-radius: 4px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        line-height: 1.6;
+    }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     thead th {
         background: #F1F5F9;
@@ -537,7 +555,18 @@ _CSS = """
 _up_cls  = "positive" if upside > 0 else "negative"
 _bw_cls  = "badge-green" if upside > 10 else ("badge-red" if upside < -10 else "badge-blue")
 
+# Leading banner whenever the model does not apply — placed before the KPI tiles
+# so a reader cannot take the intrinsic value at face value.
+_warn_banner = (
+    f'<div class="model-warning"><b>DCF not applicable for {TICKER}.</b> '
+    f'The normalized free cash flow is {fcf_norm/1e9:.2f} Bn USD, i.e. negative. '
+    f'The figures below discount continued cash burn and are therefore not an '
+    f'intrinsic value. Refer to the Merton credit model and the multiples '
+    f'cross-check for this company.</div>\n'
+) if fcf_norm_negative else ''
+
 s1_content = (
+    _warn_banner +
     '<div class="kpi-grid">\n'
     f'  <div class="kpi-tile"><div class="kpi-label">Intrinsic Value</div>'
     f'  <div class="kpi-value">{equity_per_share:.2f} USD</div></div>\n'

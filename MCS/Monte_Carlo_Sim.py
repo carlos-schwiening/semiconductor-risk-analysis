@@ -15,7 +15,7 @@ Run with: python MCS/Monte_Carlo_Sim.py [--ticker MCHP]
   Block 8b: QCOM Dashboard Chart (distribution + parameter histograms)
   Block 9:  Convergence Test (VaR99 at N=100…10,000)
   Block 10: Tornado Chart of Uncertainty (parameter sensitivity)
-  Block 11: Excel Export (MCS_Results_{TICKER}_{date}.xlsx)
+  Block 11: Excel Export (MCS_Results_{TICKER}.xlsx)
 """
 
 # region Block 0 - Imports & Setup

@@ -11,7 +11,7 @@ Run with: python DCF/DCF_Valuation.py [--ticker MCHP]
   Block 5: Scenario Analysis Bear / Base / Bull
   Block 6: Peer Group Comparison (all 5 tickers)
   Block 7: Multiples Cross-Check (EV/EBITDA, P/E, EV/Sales)
-  Block 8: Excel Export (DCF_Results_{TICKER}_{date}.xlsx)
+  Block 8: Excel Export (DCF_Results_{TICKER}.xlsx)
 """
 
 # region Block 0 - Imports & Setup
@@ -281,6 +281,13 @@ wacc_source = "CAPM"
 # STEP 1 — Normalized FCF (median, robust against outliers)
 fcf_norm = float(np.median(fcf))
 
+# A DCF discounts future cash flows the company is assumed to generate. With a
+# negative normalized FCF the model still produces a number, but that number is
+# not an intrinsic value — it is the present value of continued cash burn.
+# Everything downstream (base case, sensitivity, Monte Carlo, peer rank) inherits
+# this, so the limitation is stated up front rather than buried in the results.
+fcf_norm_negative = fcf_norm <= 0
+
 # STEP 2 — Growth assumptions
 g1 = getattr(config, "GROWTH_MEAN", 0.05)   # Phase 1: recovery (Config = 5%)
 g2 = TERMINAL_GROWTH                            # Phase 2: terminal growth (Config = 2.5%)
@@ -319,6 +326,11 @@ print(f"=== DCF Base Case — {TICKER} ({COMPANY}) ===")
 print(f"{'='*60}")
 print(f"FCF last year:           {fcf[0]/1e9:.3f} Bn USD")
 print(f"FCF normalized (Med.):   {fcf_norm/1e9:.3f} Bn USD")
+if fcf_norm_negative:
+    print(f"  [!] Normalized FCF is negative — a DCF cannot produce a meaningful")
+    print(f"      intrinsic value here. All DCF figures below are the present value")
+    print(f"      of continued cash burn, not a valuation. Use the Merton model and")
+    print(f"      the multiples cross-check for {TICKER} instead.")
 print(f"FCF Peak (5Y):           {max(fcf)/1e9:.3f} Bn USD")
 print(f"WACC:                    {wacc:.2%}  (CAPM)")
 print(f"Growth Phase 1 (5Y):     {g1:.1%}  (assumption: normalization after inventory drawdown cycle)")
@@ -979,6 +991,13 @@ if not df_dcf_summary.empty:
 
 # region Interpretation
 print("\n=== Interpretation ===")
+
+if fcf_norm_negative:
+    print(f">>> MODEL NOT APPLICABLE: normalized FCF is {fcf_norm/1e9:.2f} Bn USD. Every DCF")
+    print(f"    figure in this run — intrinsic value, upside, sensitivity, Monte Carlo,")
+    print(f"    peer rank — discounts a negative cash flow and must not be read as a")
+    print(f"    valuation. The remaining comments describe the model's behaviour, not")
+    print(f"    an investment case.")
 
 if not np.isnan(fcf_cagr):
     if fcf_cagr > 0.10:
