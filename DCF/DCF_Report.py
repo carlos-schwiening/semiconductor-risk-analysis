@@ -209,8 +209,8 @@ _LAYOUT = dict(paper_bgcolor=BG, plot_bgcolor=BG, template="plotly_white",
                font=dict(color=TEXT, size=11))
 
 
-def _html(fig):
-    return fig.to_html(full_html=False, include_plotlyjs=False, config=_CONF)
+def _html(fig: go.Figure) -> str:
+    return str(fig.to_html(full_html=False, include_plotlyjs=False, config=_CONF))
 
 
 # ── Chart 1: FCF trend (bar chart) ────────────────────
@@ -665,7 +665,7 @@ s5_content = (
 )
 
 # ── Assemble HTML ─────────────────────────────────────────────
-def _section(title, content):
+def _section(title: str, content: str) -> str:
     return (
         '<div class="section">\n'
         f'  <h2>{title}</h2>\n'

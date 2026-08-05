@@ -22,7 +22,9 @@ import os
 import argparse
 import importlib
 import warnings
+from collections.abc import Sequence
 from datetime import date
+from typing import Any, Optional, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -92,7 +94,23 @@ except ImportError:
 #   balance-sheet     → Debt, Cash, Equity (current)
 # ─────────────────────────────────────────────────────────────
 
-def load_dcf_data():
+class DcfData(TypedDict):
+    """Everything Block 1 pulls out of the FMP cache for one ticker."""
+    wacc_fmp: Optional[float]   # None on the FMP free plan
+    earnings_yield: float
+    fcf_yield: float
+    market_cap: float
+    fcf: list[float]            # 5 years, newest first
+    cf_dates: list[str]
+    revenue: list[float]
+    ebitda: list[float]
+    net_income: list[float]
+    total_debt: float
+    cash: float
+    equity_bk: float
+
+
+def load_dcf_data() -> DcfData:
     """Load all DCF-relevant fields from FMP cache files."""
 
     # key-metrics — annual, newest entry first
@@ -182,14 +200,20 @@ print(f"Total Debt:              {total_debt / 1e9:.2f} Bn USD")
 print(f"Cash & Equivalents:      {cash / 1e9:.2f} Bn USD")
 
 print(f"\n--- Revenue & Profitability (5 years, newest first) ---")
-for i, d in enumerate(cf_dates):
+for i, cf_date in enumerate(cf_dates):
     margin = ebitda[i] / revenue[i] if revenue[i] != 0 else 0.0
     net_m  = net_income[i] / revenue[i] if revenue[i] != 0 else 0.0
-    print(f"  {d}: Rev = {revenue[i]/1e9:.2f} Bn | EBITDA = {ebitda[i]/1e9:.2f} Bn ({margin:.1%}) | Net = {net_income[i]/1e9:.2f} Bn ({net_m:.1%})")
+    print(f"  {cf_date}: Rev = {revenue[i]/1e9:.2f} Bn | EBITDA = {ebitda[i]/1e9:.2f} Bn ({margin:.1%}) | Net = {net_income[i]/1e9:.2f} Bn ({net_m:.1%})")
 
 # ── WACC Calculation via CAPM ─────────────────────────────────
 
-def calculate_wacc(prices, market_cap_, total_debt, income_data, risk_free_rate):
+def calculate_wacc(
+    prices: pd.Series,
+    market_cap_: float,
+    total_debt: float,
+    income_data: Sequence[dict[str, Any]],
+    risk_free_rate: float,
+) -> dict[str, float]:
     """CAPM-based WACC: Beta (252-day OLS), Ke, Kd after tax, E/V weights."""
     sp500 = load_prices("SP500_historical-price-eod_full.json")
     beta  = calculate_beta(prices, sp500)
@@ -305,8 +329,8 @@ print(f"Terminal Growth:         {g2:.1%}")
 print(f"\n--- Forecast (Years 1–{FORECAST_YEARS}) ---")
 print(f"{'Year':>5} {'FCF (Bn)':>12} {'PV (Bn)':>12}")
 print("-" * 32)
-for d in fcf_prognose:
-    print(f"{int(d['Year']):>5} {d['FCF']/1e9:>12.3f} {d['PV_FCF']/1e9:>12.3f}")
+for year_row in fcf_prognose:
+    print(f"{int(year_row['Year']):>5} {year_row['FCF']/1e9:>12.3f} {year_row['PV_FCF']/1e9:>12.3f}")
 
 print(f"\nTerminal Value:          {tv/1e9:.2f} Bn USD")
 print(f"PV Terminal Value:       {pv_tv/1e9:.2f} Bn USD")
@@ -380,8 +404,8 @@ else:
          for j, g in enumerate(G1_RANGE)
          if not np.isnan(matrix[i][j])]
     )
-    d, w_c, g_c, v_c = diffs[0]
-    print(f"  Closest: WACC={w_c:.0%}, Growth={g_c:.0%} → {v_c:.2f} USD ({d:.1%} dev.)")
+    dev_c, w_c, g_c, v_c = diffs[0]
+    print(f"  Closest: WACC={w_c:.0%}, Growth={g_c:.0%} → {v_c:.2f} USD ({dev_c:.1%} dev.)")
 
 # --- Heatmap ---
 text_matrix = []
@@ -665,7 +689,13 @@ _ALL_TICKERS = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 _sp500_peer  = load_prices("SP500_historical-price-eod_full.json")
 
 
-def _peer_wacc(mktcap_p, debt_p, prices_p, inc_data_p, rf_p):
+def _peer_wacc(
+    mktcap_p: float,
+    debt_p: float,
+    prices_p: pd.Series,
+    inc_data_p: Sequence[dict[str, Any]],
+    rf_p: float,
+) -> tuple[float, float]:
     """CAPM WACC for a peer — same core routine as the active ticker, S&P 500 cached."""
     beta_p = calculate_beta(prices_p, _sp500_peer)
     ie_p, tax_and_ebt_p = extract_wacc_inputs(inc_data_p, debt_p)
@@ -745,19 +775,20 @@ print(f"{'='*95}")
 print(f"{'Ticker':<7} {'Name':<25} {'WACC':>7} {'Beta':>6} {'FCF (Bn)':>10} "
       f"{'DCF Value':>10} {'Price':>8} {'Upside':>9} Valuation")
 print("-" * 95)
-for _, row in df_peer.iterrows():
-    print(f"{row['Ticker']:<7} {row['Name']:<25} {row['WACC']:>7.1%} {row['Beta']:>6.2f} "
-          f"{row['FCF_Norm_Bn']:>10.2f} {row['Value_Per_Share']:>10.2f} {row['Price']:>8.2f} "
-          f"{row['Upside_Pct']:>8.1f}%  {row['Valuation']}")
+for _, peer_row in df_peer.iterrows():
+    print(f"{peer_row['Ticker']:<7} {peer_row['Name']:<25} {peer_row['WACC']:>7.1%} {peer_row['Beta']:>6.2f} "
+          f"{peer_row['FCF_Norm_Bn']:>10.2f} {peer_row['Value_Per_Share']:>10.2f} {peer_row['Price']:>8.2f} "
+          f"{peer_row['Upside_Pct']:>8.1f}%  {peer_row['Valuation']}")
 
 print(f"\n{'='*60}")
 print(f"=== Terminal Value Share of EV_DCF (Base Case, all 5 tickers) ===")
 print(f"{'='*60}")
 print(f"{'Ticker':<7} {'TV Share':>10}")
 print("-" * 19)
-for _, row in df_peer.sort_values("Ticker").iterrows():
-    _tv_s = row["Terminal_Value_Share_Pct"]
-    print(f"{row['Ticker']:<7} {_tv_s:>9.1f}%" if not np.isnan(_tv_s) else f"{row['Ticker']:<7} {'n/a':>10}")
+for _, peer_row in df_peer.sort_values("Ticker").iterrows():
+    _tv_s = peer_row["Terminal_Value_Share_Pct"]
+    print(f"{peer_row['Ticker']:<7} {_tv_s:>9.1f}%" if not np.isnan(_tv_s)
+          else f"{peer_row['Ticker']:<7} {'n/a':>10}")
 
 fig6 = go.Figure()
 fig6.add_trace(go.Bar(
@@ -933,7 +964,13 @@ df_g2_export = df_g2_sens.copy()
 df_g2_export.insert(0, "Date", _export_date)
 
 
-def export_excel_dcf(df_summary, df_scenarios, df_peer_grp, df_g2, output_path):
+def export_excel_dcf(
+    df_summary: pd.DataFrame,
+    df_scenarios: pd.DataFrame,
+    df_peer_grp: pd.DataFrame,
+    df_g2: pd.DataFrame,
+    output_path: str,
+) -> str:
     """Export all DCF results to a single .xlsx workbook (one sheet per result set)."""
     excel_path = os.path.join(output_path, f"DCF_Results_{TICKER}.xlsx")
     with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
