@@ -39,7 +39,8 @@ except ImportError:  # running directly as a script (python Merton/KMV_Textbook_
     from merton_core import merton_model  # type: ignore[import-not-found,no-redef]
 
 TICKER_LIST   = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
-CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
+# Cache lives outside the repo: set FMP_CACHE_DIR, else the project-local default applies.
+CACHE_FOLDER  = os.environ.get("FMP_CACHE_DIR", os.path.join(PROJECT_ROOT, "data", "FMP_Cache"))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "Outputs", "Visualisierung")
 
 TODAY   = date.today().strftime("%Y-%m-%d")

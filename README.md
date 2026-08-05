@@ -199,6 +199,20 @@ python MCS/Monte_Carlo_Sim.py --ticker MCHP
 
 This installs the project as a package (see `pyproject.toml`), so `Merton`,
 `DCF`, `MCS`, and `Config` can be imported cleanly without path hacks.
+
+**Data cache location.** Every model reads its input from a local folder of
+cached FMP JSON files. By default the scripts look in `data/FMP_Cache/` inside
+the project. If your cache lives elsewhere, point the `FMP_CACHE_DIR`
+environment variable at it:
+
+```bash
+export FMP_CACHE_DIR=/path/to/FMP_Cache          # macOS / Linux
+setx FMP_CACHE_DIR "D:\path\to\FMP_Cache"        # Windows, once
+```
+
+All generated artefacts are written to `Outputs/` inside the project and are
+excluded from version control.
+
 Each script is self-contained and runs against a local FMP cache. Switch the
 active ticker via `--ticker` (`MCHP` | `INTC` | `ON` | `QCOM` | `MPWR`,
 defaults to `MCHP`) — no code editing needed. `Merton_Report.py` and the

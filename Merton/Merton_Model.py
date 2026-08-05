@@ -61,7 +61,8 @@ MATURITY          = config.MATURITY
 EXCEL_DIR      = os.path.join(config.OUTPUT_DIR, "Excel", ACTIVE_CONFIG)
 VIZ_DIR        = os.path.join(config.OUTPUT_DIR, "Visualisierung", ACTIVE_CONFIG)
 
-CACHE_FOLDER = r"C:\Python\Data\FMP\FMP_Cache"
+# Cache lives outside the repo: set FMP_CACHE_DIR, else the project-local default applies.
+CACHE_FOLDER = os.environ.get("FMP_CACHE_DIR", os.path.join(PROJECT_ROOT, "data", "FMP_Cache"))
 
 os.makedirs(EXCEL_DIR, exist_ok=True)
 os.makedirs(VIZ_DIR, exist_ok=True)

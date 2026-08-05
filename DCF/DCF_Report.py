@@ -51,7 +51,8 @@ SIMULATIONS      = getattr(config, "SIMULATIONS",  10000)
 WACC_STD          = getattr(config, "WACC_STD",      0.015)
 GROWTH_STD      = getattr(config, "GROWTH_STD",  0.020)
 
-CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
+# Cache lives outside the repo: set FMP_CACHE_DIR, else the project-local default applies.
+CACHE_FOLDER  = os.environ.get("FMP_CACHE_DIR", os.path.join(PROJECT_ROOT, "data", "FMP_Cache"))
 OUTPUT_DIR    = os.path.join(config.OUTPUT_DIR, "Reports", ACTIVE_CONFIG)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

@@ -29,7 +29,8 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 TICKER_LIST    = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
-CACHE_FOLDER   = r"C:\Python\Data\FMP\FMP_Cache"
+# Cache lives outside the repo: set FMP_CACHE_DIR, else the project-local default applies.
+CACHE_FOLDER   = os.environ.get("FMP_CACHE_DIR", os.path.join(PROJECT_ROOT, "data", "FMP_Cache"))
 OUTPUT_DIR     = os.path.join(PROJECT_ROOT, "Outputs", "Excel")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

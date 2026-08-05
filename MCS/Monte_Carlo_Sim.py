@@ -57,7 +57,8 @@ COMPANY       = config.COMPANY
 RISK_FREE_RATE = config.RISK_FREE_RATE
 MATURITY          = config.MATURITY
 
-CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
+# Cache lives outside the repo: set FMP_CACHE_DIR, else the project-local default applies.
+CACHE_FOLDER  = os.environ.get("FMP_CACHE_DIR", os.path.join(PROJECT_ROOT, "data", "FMP_Cache"))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "Outputs", "Visualisierung")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
