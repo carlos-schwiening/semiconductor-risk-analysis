@@ -885,9 +885,17 @@ def _ptf_var99_override(
     fcf_mult: float = 1.0,
     g2_delta: float = 0.0,
 ) -> float:
-    """Compute portfolio VaR 99% with uniform parameter override across all tickers."""
+    """
+    Portfolio VaR 99% with a uniform parameter override, on the same basis as the
+    headline figure in Block 8: floored at REL_FLOOR and restricted to the tickers
+    with an applicable DCF. Any other basis would make the tornado measure the
+    sensitivity of a portfolio that is not the one being reported.
+    """
+    _w  = 1.0 / len(_DCF_APPLICABLE)
     _pv = np.zeros(N_SIM)
     for _ti, _tkr in enumerate(_TICKERS_5):
+        if _tkr not in _DCF_APPLICABLE:
+            continue
         _z  = _Z_corr[:, _ti]
         _wc = np.clip(apply_distribution("WACC", _ticker_wacc[_tkr], _z) + wacc_delta, 0.04, 0.25)
         _g  = np.clip(apply_distribution("g1",   _ticker_g1[_tkr],   _z) + g1_delta,  0.00, 0.15)
@@ -895,7 +903,7 @@ def _ptf_var99_override(
         _g2 = np.clip(apply_distribution("g2", _ticker_g2[_tkr], _z) + g2_delta, 0.01, 0.04)
         _wa = _dcf_array(_wc, _g, _fc, _g2, _ticker_prog[_tkr], _ticker_nd[_tkr], _ticker_shr[_tkr])
         _rel = np.where(np.isnan(_wa) | (_ticker_price[_tkr] == 0), 1.0, _wa / _ticker_price[_tkr])
-        _pv += 0.20 * np.clip(_rel, -2.0, 5.0)
+        _pv += _w * np.clip(_rel, REL_FLOOR, REL_CAP)
     return float(np.percentile((1.0 - _pv) * 100, 99))
 
 
@@ -958,6 +966,9 @@ _tornado_rows.sort(key=lambda x: x["Total_Impact"], reverse=True)
 
 print(f"\n{'='*68}")
 print(f"=== Block 10 — Tornado Chart (Base VaR99 = {_base_var_tor:.2f}%) ===")
+print(f"Base differs from the Block 8 figure ({_app_var99:.2f}%) because the tornado runs")
+print(f"without the macro regime overlay, isolating the four input parameters. Read the")
+print(f"impacts as relative contributions, not as deltas on the reported VaR.")
 print(f"{'='*68}")
 print(f"{'Parameter':<10} {'VaR99 @P10':>12} {'VaR99 @P90':>12} {'Impact':>12}")
 print("-" * 48)

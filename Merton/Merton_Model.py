@@ -1080,11 +1080,23 @@ for _tkr in _ALL_TICKERS:
         "Ticker":        _tkr,
         "DD":            round(_m["dd"],      4),
         "PD":            round(_m["pd"],      6),
+        # The 5-year PD was already computed for the lifetime ECL but never
+        # reported. It is the more informative of the two: at a one-year horizon
+        # the structural model returns a near-zero PD for any investment-grade
+        # issuer, while the five-year figure lands in the range of observed
+        # cumulative default rates.
+        "PD_5Y":         round(_m5y["pd"],    6),
         "sigma_V":       round(_m["sigma_v"], 4),
         "sigma_E":       round(_se,           4),
         "MarketCap_Bn":  round(_E / 1e9,     2),
         "Debt_Bn":       round(_D / 1e9,     2),
         "Rating":        _rat,
+        # The agency rating sits in the Config files but was never used. Carrying
+        # it here makes the comparison explicit: the model letters are internal,
+        # derived purely from equity volatility and leverage, and a structural
+        # model runs more conservatively than an agency, which also weighs
+        # qualitative factors the model cannot see.
+        "Rating_Agency": getattr(_cfg, "RATING", "n/a"),
         "ECL_Stage":     _stage,
         "ECL_12M":       round(_m1y["pd"] * 0.45 * _D / 1e6, 4),
         "ECL_Lifetime":  round(_m5y["pd"] * 0.45 * _D / 1e6, 4),

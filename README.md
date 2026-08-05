@@ -12,8 +12,8 @@ I chose the semiconductor sector because it sits at the intersection of cyclical
 
 ## Key Results
 
-| Ticker | Company | Rating | Distance to Default | DCF Value/Share | Market Price | Upside | IFRS 9 Stage |
-|--------|---------|--------|--------------------:|----------------:|-------------:|-------:|:-------------|
+| Ticker | Company | Model Rating | Distance to Default | DCF Value/Share | Market Price | Upside | IFRS 9 Stage |
+|--------|---------|--------------|--------------------:|----------------:|-------------:|-------:|:-------------|
 | MCHP | Microchip Technology | BBB | 5.14 | $61.03 | $87.91 | −30.6% | Stage 1 |
 | INTC | Intel Corporation | BB | 3.65 | not applicable ¹ | $107.04 | — | Stage 2 |
 | ON | ON Semiconductor | BBB | 4.17 | $56.56 | $110.17 | −48.7% | Stage 1 |
@@ -22,7 +22,7 @@ I chose the semiconductor sector because it sits at the intersection of cyclical
 
 ¹ INTC's normalized free cash flow is −$9.62 Bn. A DCF discounts the cash a company is expected to generate, so a negative starting point yields the present value of continued cash burn — arithmetically −$70.11 per share, or −165.5% "upside" — rather than an intrinsic value. Reporting that number as a valuation would be a category error, so the model states the limitation instead and points to the two measures that do carry information for INTC: the Merton credit model (Stage 2, `DD` = 3.65) and the multiples cross-check.
 
-The Monte Carlo simulation (10,000 runs, $\rho$ = 60% sector correlation, three macro regimes) yields a portfolio `VaR` 99% of 84.57% (normalized to 100) across the four tickers whose DCF applies, reflecting that they all trade at significant premiums to their base-case DCF fair values. The Tornado Chart identifies `FCF` as the largest uncertainty driver, with a ±6.6% impact on `VaR` 99% across the P10–P90 range.
+The Monte Carlo simulation (10,000 runs, $\rho$ = 60% sector correlation, three macro regimes) yields a portfolio `VaR` 99% of 84.57% (normalized to 100) across the four tickers whose DCF applies, reflecting that they all trade at significant premiums to their base-case DCF fair values. The Tornado Chart identifies `FCF` as the largest uncertainty driver, moving `VaR` 99% by 21.3 percentage points across its P10–P90 range.
 
 ---
 
@@ -32,15 +32,31 @@ The Merton (1974) model treats a firm's equity as a call option on its assets wi
 
 $$DD = \frac{\ln(V/D) + (\mu - \frac{1}{2}\sigma_V^2)T}{\sigma_V\sqrt{T}}$$
 
-IFRS 9 `ECL` integration classifies each borrower into Stage 1 ($DD$ > 4, 12-month `ECL`), Stage 2 ($DD$ 2–4, lifetime `ECL`), or Stage 3 ($DD$ < 2, `LGD` × `EAD`). The model also produces a quarterly Rating Migration Matrix showing transition probabilities between rating buckets, an `LGD` sensitivity analysis across Bear/Base/Bull scenarios, and a five-ticker summary Excel workbook.
+IFRS 9 `ECL` integration classifies each borrower into Stage 1 ($DD$ > 4, 12-month `ECL`), Stage 2 ($DD$ 2–4, lifetime `ECL`), or Stage 3 ($DD$ < 2, `LGD` × `EAD`). This is a deliberate simplification and departs from the standard in one respect worth stating: IFRS 9 triggers Stage 2 on a *significant increase in credit risk since initial recognition* — a relative test against the exposure's own starting point — whereas absolute `DD` thresholds are used here. That trade is made knowingly: a relative test needs an origination date and a credit-risk history per exposure, which a market-data model of listed equity does not have. The staging should therefore be read as a credit-quality bucket, not as an audit-ready IFRS 9 classification. The model also produces a quarterly Rating Migration Matrix showing transition probabilities between rating buckets, an `LGD` sensitivity analysis across Bear/Base/Bull scenarios, and a five-ticker summary Excel workbook.
 
-| Ticker | Company | Distance to Default | Rating | $PD$ (%) | IFRS 9 Stage | Model Spread (bps) | Market Benchmark (bps) |
-|--------|---------|--------------------:|--------|-------:|:-------------|-------------------:|:----------------------|
-| MCHP | Microchip Technology | 5.14 | BBB | 0.0000% | Stage 1 | 0.0 | 120–180 |
-| INTC | Intel Corporation | 3.65 | BB | 0.0131% | Stage 2 | 0.6 | 250–400 |
-| ON | ON Semiconductor | 4.17 | BBB | 0.0015% | Stage 1 | 0.1 | 120–180 |
-| QCOM | Qualcomm | 6.52 | A | 0.0000% | Stage 1 | 0.0 | 60–90 |
-| MPWR | Monolithic Power Systems | 13.88 | AAA/AA | 0.0000% | Stage 1 | 0.0 | 30–50 |
+| Ticker | Company | Distance to Default | Model Rating | Agency Rating | IFRS 9 Stage | Model Spread (bps) | Market Benchmark (bps) |
+|--------|---------|--------------------:|--------------|---------------|:-------------|-------------------:|:----------------------|
+| MCHP | Microchip Technology | 5.14 | BBB | BB+ | Stage 1 | 0.0 | 120–180 |
+| INTC | Intel Corporation | 3.65 | BB | BBB | Stage 2 | 0.6 | 250–400 |
+| ON | ON Semiconductor | 4.17 | BBB | BBB− | Stage 1 | 0.1 | 120–180 |
+| QCOM | Qualcomm | 6.52 | A | A− | Stage 1 | 0.0 | 60–90 |
+| MPWR | Monolithic Power Systems | 13.88 | AAA/AA | A | Stage 1 | 0.0 | 30–50 |
+
+**The rating letters are model-internal, not agency ratings.** They are a mapping of the `DD` bucket onto familiar labels, derived from equity volatility and leverage alone. Placing the agency rating beside them shows the model does not simply run more conservatively: it is *more optimistic* for four of the five and harsher only for INTC. The divergence has a structural cause — the model rewards a clean balance sheet almost mechanically, which is why MPWR's near-zero debt lands it at AAA/AA, while an agency also weighs scale, competitive position, and business risk that no equity-volatility model can observe.
+
+**Where the model earns its keep: the five-year horizon.** The one-year `PD` is near zero for every investment-grade issuer here, which says more about the horizon than about the companies. The five-year `PD` — the same model, run at $T=5$, and the figure already driving the lifetime `ECL` — lands close to observed cumulative default rates:
+
+| Ticker | Model Rating | $PD$ 1Y (model) | $PD$ 1Y (observed) | $PD$ 5Y (model) | $PD$ 5Y (observed) |
+|--------|--------------|----------------:|-------------------:|----------------:|-------------------:|
+| MCHP | BBB | 0.0000% | 0.16% | **1.95%** | 1.55% |
+| QCOM | A | 0.0000% | 0.05% | **0.33%** | 0.55% |
+| INTC | BB | 0.0131% | 0.63% | **9.82%** | 5.60% |
+| ON | BBB | 0.0015% | 0.16% | **6.40%** | 1.55% |
+| MPWR | AAA/AA | 0.0000% | 0.02% | 0.00% | 0.30% |
+
+*Observed = S&P Global average cumulative default rates by rating category, 1981–2023.*
+
+Three of the five land in the right neighbourhood at five years, which is the more meaningful validation of a structural model than any one-year figure. ON is the exception and worth naming: its five-year `PD` of 6.40% is four times the BBB benchmark, so the model's own outputs disagree with each other — the rating bucket derives from the one-year `DD`, the lifetime `ECL` from the five-year `PD`, and for ON those two tell different stories. MPWR's 0.00% reflects a firm with almost no debt, where the structural model has nothing to price.
 
 **The model spread sits far below the market benchmark for every ticker — that gap is a result, not an error.** The theoretical spread follows from the risk-neutral $PD$ via $s = -\ln(1 - PD \cdot LGD)\,/\,T$, and at a one-year horizon the Merton $PD$ for an investment-grade issuer is vanishingly small: a $DD$ of 5.14 corresponds to a $PD$ of roughly $10^{-7}$. The structural model therefore prices almost no credit risk, while observed market spreads compensate for liquidity, recovery uncertainty, and the jump-to-default risk that a diffusion process cannot represent. This is the well-documented credit spread puzzle of structural models at short horizons. The script reports the comparison explicitly for the active ticker (`Model UNDER market range`), which is why the benchmark band is shown alongside rather than in place of the model output — the informative content of the Merton model here lies in the $DD$ ranking and the IFRS 9 staging, not in the absolute spread level.
 
@@ -56,9 +72,11 @@ The DCF model values equity using a two-phase discounted cash flow approach: an 
 
 $$WACC = \frac{E}{V} \cdot K_e + \frac{D}{V} \cdot K_d \cdot (1-t)$$
 
+**The resulting discount rates sit above sector norms, and that drives much of the result.** The 252-day betas come out between 1.67 and 2.46, against a semiconductor sector reference of roughly 1.55–1.75 (Damodaran). With a 4.3% risk-free rate and a 5.5% equity risk premium that yields a cost of equity of 13.5%–17.8%, where the sector reference is closer to 11%–12%. A discount rate two to six points above the reference is a large part of why all five names come out overvalued — a one-year daily beta is a noisy estimator, and the 2025/26 window contains unusually large idiosyncratic moves for these stocks. The scenario analysis below varies `WACC` by ±1.0–1.5 percentage points, which brackets part but not all of that gap.
+
 $$EV_{DCF} = \sum_{t=1}^{5} \frac{FCF_t}{(1+WACC)^t} + \frac{FCF_5 \cdot (1+g_2)}{(WACC - g_2) \cdot (1+WACC)^5}$$
 
-Scenario analysis stresses the Base Case along three paths: Bear (`WACC` +1.5%, $g_1$ −2%, `FCF` ×0.85), Base (unchanged), and Bull (`WACC` −1%, $g_1$ +2%, `FCF` ×1.15). A full Peer Group loop computes `WACC`, DCF value, and upside for all five tickers independently, and a Multiples Cross-Check benchmarks EV/EBITDA, P/E, and EV/Sales against semiconductor sector norms (Damodaran, Jan 2025).
+Scenario analysis stresses the Base Case along three paths: Bear (`WACC` +1.5%, $g_1$ −2%, `FCF` ×0.85), Base (unchanged), and Bull (`WACC` −1%, $g_1$ +2%, `FCF` ×1.15). A full Peer Group loop computes `WACC`, DCF value, and upside for all five tickers independently, and a Multiples Cross-Check benchmarks EV/EBITDA, P/E, and EV/Sales against semiconductor sector norms (Damodaran, Jan 2025). The two methods deliberately use different bases and should not be read as directly comparable: the DCF normalizes free cash flow over five years to smooth the cycle, while the multiples are computed on the most recent fiscal year. In a trough year that inflates them sharply — MCHP's P/E of 173x reflects collapsed trailing earnings, not a 173-year payback expectation. The cross-check is therefore a sanity check on current market pricing, not a second valuation.
 
 Across the four tickers with a positive Base Case valuation, the present value of the terminal value (Phase 2) makes up 57%–65% of total EV_DCF — MPWR 56.9%, ON 60.1%, QCOM 61.3%, MCHP 65.4% (INTC's Base Case EV is structurally negative, so a terminal value share is not meaningful there). Varying the terminal growth rate $g_2$ by ±1% around the Base Case (2.5%) shifts implied value per share by roughly ±3–4% for MPWR up to ±8–10% for MCHP across the five tickers. This sensitivity is inversely related to each ticker's WACC-g₂ spread: MPWR's high 17.2% WACC creates a wide buffer against terminal growth assumptions, while MCHP's lower 12.0% WACC leaves less room, amplifying the impact of any change in g₂. Because more than half of every ticker's enterprise value rests on a single long-run growth assumption — one that by construction cannot be observed or back-tested over a short horizon — these DCF valuations are structurally dependent on a parameter with limited empirical anchoring, and should be read as scenario-sensitive estimates rather than precise point values.
 
@@ -151,7 +169,16 @@ INTC is a partial exception: its negative normalized FCF reflects company-specif
 
 The Monte Carlo engine runs 10,000 simulations of DCF equity values across all five tickers simultaneously, using configurable parametric distributions for each input. A Gaussian copula with Cholesky decomposition imposes $\rho$ = 60% pairwise correlation across tickers, reflecting the high systematic co-movement of semiconductor stocks. A macro regime overlay (Recession 25% / Base 50% / Boom 25%) shifts `WACC`, $g_1$, and `FCF` before each simulation run. The portfolio is held at equal weights (20% each), normalized to 100, and `VaR`/`CVaR` are computed on the resulting loss distribution.
 
-The Convergence Test confirms `VaR` 99% stabilizes above 5,000 simulations (Δ < 0.1%). The Tornado Chart isolates the contribution of each parameter by varying it from P10 to P90 while holding all others at their mean — `FCF` variability dominates, followed by `WACC` uncertainty.
+The Convergence Test confirms `VaR` 99% stabilizes above 5,000 simulations (Δ < 0.1%). The Tornado Chart isolates the contribution of each parameter by varying it from P10 to P90 while holding all others at their mean:
+
+| Parameter | `VaR` 99% @ P10 | `VaR` 99% @ P90 | Swing |
+|---|---:|---:|---:|
+| `FCF` | 82.2% | 60.9% | 21.3 pp |
+| `WACC` | 62.0% | 78.4% | 16.4 pp |
+| $g_1$ | 74.0% | 67.4% | 6.6 pp |
+| $g_2$ | 73.7% | 69.6% | 4.2 pp |
+
+`FCF` uncertainty dominates, followed by `WACC`. The tornado runs without the macro regime overlay in order to isolate the four input parameters, so its base `VaR` 99% of 72.2% differs from the 84.6% reported above — read the swings as relative contributions, not as deltas on the headline figure.
 
 Each parameter's distribution shape reflects a specific assumption about its empirical behavior rather than a default choice. `WACC` uses a Normal distribution because its underlying components (cost of equity, cost of debt) are approximately symmetric around their expected value with no known skew — the standard approach in practice. $g_1$ uses a Triangular distribution, deliberately chosen because the available information is a plausible range (0% floor, no negative growth assumed) and a most-likely value rather than a fully estimated distribution shape — the 12% ceiling reflects historical semiconductor sector growth rates. `FCF` uses a Log-Normal distribution to capture the right-skew typical of cash flow shocks, where large positive surprises are more likely than symmetric extremes in either direction. $g_2$ uses a Uniform distribution between a plausible floor and ceiling close to long-run GDP growth, deliberately encoding maximum uncertainty without favoring any value within that range — the most conservative assumption available when only the bounds, not the shape, are known.
 
@@ -173,7 +200,7 @@ Each parameter's distribution shape reflects a specific assumption about its emp
 | `VaR` 99% | 84.57% loss |
 | `CVaR` 99% (Expected Shortfall) | 85.77% loss |
 | Diversification Effect vs. Single Names | 6.3% Std reduction |
-| Largest Uncertainty Driver | `FCF` (±6.6% impact on `VaR` 99%) |
+| Largest Uncertainty Driver | `FCF` (21.3 pp swing in `VaR` 99%) |
 
 **Limited liability caps the loss at 100%.** A simulated equity value is floored at zero before it enters the loss distribution, because a shareholder can lose the capital invested but no more. This is the same assumption Model 1 rests on, where equity is priced as a call option with payoff $\max(V-D,\,0)$ — the three models share it rather than each making its own.
 

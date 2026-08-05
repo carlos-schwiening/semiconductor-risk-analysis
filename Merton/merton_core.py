@@ -23,11 +23,19 @@ def merton_model(
         d1     = (np.log(V / D) + (r + 0.5 * sigma_v ** 2) * T) / (sigma_v * sqrt_t)
         d2     = d1 - sigma_v * sqrt_t
 
-        e_model       = V * norm.cdf(d1) - D * np.exp(-r * T) * norm.cdf(d2)
-        sigma_e_model = (V / E) * norm.cdf(d1) * sigma_v
+        n_d1    = norm.cdf(d1)
+        e_model = V * n_d1 - D * np.exp(-r * T) * norm.cdf(d2)
 
+        # Both defining equations of the model are used, not just the first:
+        #   E     = V*N(d1) - D*e^(-rT)*N(d2)      -> update of V
+        #   sigma_E = (V/E) * N(d1) * sigma_V      -> update of sigma_V
+        # Solving the second for sigma_V gives the N(d1) term below. Dropping it
+        # would be the "naive" approximation of Bharath/Shumway (2008), a different
+        # method from the iterative KMV procedure this module documents. For firms
+        # far from the default boundary N(d1) is ~1 and both coincide; close to the
+        # boundary they do not.
         v_new       = V * (E / e_model)
-        sigma_v_new = sigma_e * (E / v_new)
+        sigma_v_new = sigma_e * E / (v_new * n_d1)
 
         converged = abs(v_new - V) < tol and abs(sigma_v_new - sigma_v) < tol
         V, sigma_v = v_new, sigma_v_new
