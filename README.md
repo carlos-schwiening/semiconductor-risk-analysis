@@ -30,7 +30,9 @@ The Monte Carlo simulation (10,000 runs, $\rho$ = 60% sector correlation, three 
 
 The Merton (1974) model treats a firm's equity as a call option on its assets with the face value of debt as the strike price. Given observed equity market cap and equity volatility, the model iteratively solves for implied asset value and asset volatility using a Black-Scholes framework. The key output is the Distance to Default ($DD$) — the number of standard deviations separating current asset value from the default boundary — which maps directly to a risk-neutral Probability of Default ($PD$) and a credit spread.
 
-$$DD = \frac{\ln(V/D) + (\mu - \frac{1}{2}\sigma_V^2)T}{\sigma_V\sqrt{T}}$$
+$$DD = \frac{\ln(V/D) + (r - \frac{1}{2}\sigma_V^2)T}{\sigma_V\sqrt{T}}$$
+
+The drift term is the risk-free rate $r$, not an estimated real-world asset drift $\mu$. That makes the resulting $PD$ a risk-neutral one, consistent with the credit spread derived from it further below; a real-world $PD$ would need an expected asset return the model does not estimate.
 
 IFRS 9 `ECL` integration classifies each borrower into Stage 1 ($DD$ > 4, 12-month `ECL`), Stage 2 ($DD$ 2–4, lifetime `ECL`), or Stage 3 ($DD$ < 2, `LGD` × `EAD`). This is a deliberate simplification and departs from the standard in one respect worth stating: IFRS 9 triggers Stage 2 on a *significant increase in credit risk since initial recognition* — a relative test against the exposure's own starting point — whereas absolute `DD` thresholds are used here. That trade is made knowingly: a relative test needs an origination date and a credit-risk history per exposure, which a market-data model of listed equity does not have. The staging should therefore be read as a credit-quality bucket, not as an audit-ready IFRS 9 classification. The model also produces a quarterly Rating Migration Matrix showing transition probabilities between rating buckets, an `LGD` sensitivity analysis across Bear/Base/Bull scenarios, and a five-ticker summary Excel workbook.
 
@@ -68,7 +70,7 @@ Three of the five land in the right neighbourhood at five years, which is the mo
 
 ## Model 2 — DCF Valuation & Scenario Analysis
 
-The DCF model values equity using a two-phase discounted cash flow approach: an explicit five-year forecast phase (Phase 1, growth rate $g_1$) and a terminal value (Phase 2, perpetuity at $g_2$). The `WACC` is computed via `CAPM` using a 252-day OLS beta against the S&P 500, with debt cost derived from the ratio of interest expense to total debt and a market-value capital structure weighting. Free cash flow is normalized to the five-year median to smooth cyclical distortions — particularly relevant for INTC, which reported negative `FCF` in the most recent fiscal year.
+The DCF model values equity using a two-phase discounted cash flow approach: an explicit five-year forecast phase (Phase 1, growth rate $g_1$) and a terminal value (Phase 2, perpetuity at $g_2$). The `WACC` is computed via `CAPM` using a 252-day OLS beta against the S&P 500, with debt cost derived from the ratio of interest expense to total debt and a market-value capital structure weighting. Free cash flow is normalized to the five-year median to smooth cyclical distortions. That works for the four cyclical names; it does not rescue INTC, whose median across the five years is itself negative (−$9.62 Bn), which is why the DCF is reported as not applicable there rather than normalized into a positive figure.
 
 $$WACC = \frac{E}{V} \cdot K_e + \frac{D}{V} \cdot K_d \cdot (1-t)$$
 
@@ -86,7 +88,7 @@ Across the four tickers with a positive Base Case valuation, the present value o
 | QCOM | Qualcomm | 13.7% | 1.88 | $9.85 | $100.25 | $191.20 | −47.6% |
 | ON | ON Semiconductor | 14.0% | 2.10 | $1.29 | $56.56 | $110.17 | −48.7% |
 | MPWR | Monolithic Power Systems | 17.2% | 2.35 | $0.58 | $235.54 | $1,473.04 | −84.0% |
-| INTC | Intel Corporation | 14.3% | 2.46 | −$9.62 | negative | $107.04 | — |
+| INTC | Intel Corporation | 14.3% | 2.46 | −$9.62 | not applicable | $107.04 | — |
 
 **MCHP Scenario Analysis:**
 
@@ -167,9 +169,9 @@ INTC is a partial exception: its negative normalized FCF reflects company-specif
 
 ## Model 3 — Monte Carlo Simulation
 
-The Monte Carlo engine runs 10,000 simulations of DCF equity values across all five tickers simultaneously, using configurable parametric distributions for each input. A Gaussian copula with Cholesky decomposition imposes $\rho$ = 60% pairwise correlation across tickers, reflecting the high systematic co-movement of semiconductor stocks. A macro regime overlay (Recession 25% / Base 50% / Boom 25%) shifts `WACC`, $g_1$, and `FCF` before each simulation run. The portfolio is held at equal weights (20% each), normalized to 100, and `VaR`/`CVaR` are computed on the resulting loss distribution.
+The Monte Carlo engine runs 10,000 simulations of DCF equity values across all five tickers simultaneously, using configurable parametric distributions for each input. A Gaussian copula with Cholesky decomposition imposes $\rho$ = 60% pairwise correlation across tickers, reflecting the high systematic co-movement of semiconductor stocks. A macro regime overlay (Recession 25% / Base 50% / Boom 25%) shifts `WACC`, $g_1$, and `FCF` before each simulation run. All five tickers are simulated; the reported portfolio holds the four with an applicable DCF at equal weights (25% each), normalized to 100, and `VaR`/`CVaR` are computed on the resulting loss distribution. The equal-weighted five-ticker variant is shown alongside it for reference — see the footnotes to the per-ticker table.
 
-The Convergence Test confirms `VaR` 99% stabilizes above 5,000 simulations (Δ < 0.1%). The Tornado Chart isolates the contribution of each parameter by varying it from P10 to P90 while holding all others at their mean:
+The Convergence Test confirms `VaR` 99% stabilizes beyond 5,000 simulations: the step from 7,500 to 10,000 moves it by 0.005 pp, against 0.4–0.6 pp between the smallest sample sizes. The Tornado Chart isolates the contribution of each parameter by varying it from P10 to P90 while holding all others at their mean:
 
 | Parameter | `VaR` 99% @ P10 | `VaR` 99% @ P90 | Swing |
 |---|---:|---:|---:|

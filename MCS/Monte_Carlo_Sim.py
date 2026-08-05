@@ -826,10 +826,15 @@ except Exception as _exc_qcom:
 
 N_LEVELS = [100, 250, 500, 1000, 2500, 5000, 7500, 10_000]
 
+# Convergence is tested on the portfolio that is actually reported — the tickers
+# with an applicable DCF — so the figure it converges to is the headline VaR 99%
+# rather than a differently composed one.
+_conv_loss = _app_loss if not np.isnan(_app_var99) else _ptf_loss
+
 _conv_rows = []
 _prev_var9 = None
 for _n in N_LEVELS:
-    _var9_n = float(np.percentile(_ptf_loss[:_n], 99))
+    _var9_n = float(np.percentile(_conv_loss[:_n], 99))
     _delta  = _var9_n - _prev_var9 if _prev_var9 is not None else 0.0
     _conv_rows.append({"N_Sim": _n, "VaR_99": round(_var9_n, 3), "Delta": round(_delta, 3)})
     _prev_var9 = _var9_n
