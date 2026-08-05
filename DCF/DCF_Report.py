@@ -61,6 +61,16 @@ from plot_style import BLUE_1, BLUE_2, ORANGE_1, ORANGE_2, GRAY_1, TEXT, BG
 BORDER     = "#E5E5E5"
 TEXT_MUTED = "#888888"
 
+# Pure calculation functions — shared with DCF_Valuation.py via dcf_core.py
+try:
+    from .dcf_core import (DcfParams, cagr, calculate_beta, classify_valuation,
+                           cost_of_debt, dcf_schedule, effective_tax_rate,
+                           sensitivity_matrix, simulate_dcf, wacc_capm)
+except ImportError:
+    from dcf_core import (DcfParams, cagr, calculate_beta, classify_valuation,  # type: ignore[import-not-found,no-redef]
+                          cost_of_debt, dcf_schedule, effective_tax_rate,
+                          sensitivity_matrix, simulate_dcf, wacc_capm)
+
 # endregion
 
 
@@ -101,32 +111,34 @@ net_debt = total_debt - cash
 prices_ticker = _load_prices(f"{TICKER}_historical-price-eod_full.json")
 sp500         = _load_prices("SP500_historical-price-eod_full.json")
 
-ret_stk = np.log(prices_ticker / prices_ticker.shift(1)).dropna()
-ret_mkt = np.log(sp500 / sp500.shift(1)).dropna()
-common  = ret_stk.index.intersection(ret_mkt.index)[-252:]
-rs, rm  = ret_stk.loc[common].values, ret_mkt.loc[common].values
-cov_mat = np.cov(rs, rm)
-beta    = cov_mat[0, 1] / cov_mat[1, 1]
-ke      = RISK_FREE_RATE + beta * 0.055
+beta = calculate_beta(prices_ticker, sp500)
 
-kd = 0.0
+# FMP field names stay in the script — dcf_core only ever sees plain numbers.
+interest_expense = 0.0
 for entry in inc_list:
     i_exp = float(entry.get("interestExpense", 0) or 0)
     if i_exp > 0 and total_debt > 0:
-        kd = i_exp / total_debt
+        interest_expense = i_exp
         break
 
-tax_rates = [
-    float(e.get("incomeTaxExpense", 0) or 0) / float(e.get("incomeBeforeTax", 1) or 1)
+tax_and_ebt = [
+    (float(e.get("incomeTaxExpense", 0) or 0), float(e.get("incomeBeforeTax", 0) or 0))
     for e in inc_list
-    if float(e.get("incomeBeforeTax", 0) or 0) > 0
-    and float(e.get("incomeTaxExpense", 0) or 0) > 0
 ]
-tax_rate     = float(np.mean(tax_rates)) if tax_rates else 0.21
-kd_after_tax = kd * (1 - tax_rate)
 
-V    = market_cap + total_debt
-wacc = ke * (market_cap / V) + kd_after_tax * (total_debt / V)
+wacc_res     = wacc_capm(
+    beta       = beta,
+    risk_free  = RISK_FREE_RATE,
+    kd         = cost_of_debt(interest_expense, total_debt),
+    tax_rate   = effective_tax_rate(tax_and_ebt),
+    market_cap = market_cap,
+    total_debt = total_debt,
+)
+ke           = wacc_res["ke"]
+kd           = wacc_res["kd"]
+tax_rate     = wacc_res["tax_rate"]
+kd_after_tax = wacc_res["kd_after_tax"]
+wacc         = wacc_res["wacc_calc"]
 
 # ── 1c: DCF Base Case ────────────────────────────────────────
 fcf_norm           = float(np.median(fcf))
@@ -135,46 +147,37 @@ g2                 = TERMINAL_GROWTH
 current_price       = float(prices_ticker.iloc[-1])
 shares_outstanding = market_cap / current_price
 
-fcf_cagr = ((fcf[0] / fcf[4]) ** (1 / 4) - 1
-            if fcf[4] != 0 and (fcf[0] / fcf[4]) > 0
-            else float("nan"))
+fcf_cagr = cagr(fcf[0], fcf[4], 4)
 
-fcf_prognose = []
-fcf_t = fcf_norm
-for t in range(1, FORECAST_YEARS + 1):
-    fcf_t = fcf_t * (1 + g1)
-    fcf_prognose.append({"Year": t, "FCF": fcf_t, "PV_FCF": fcf_t / (1 + wacc) ** t})
+base_params: DcfParams = {
+    "fcf_start": fcf_norm,
+    "g1":        g1,
+    "g2":        g2,
+    "wacc":      wacc,
+    "years":     FORECAST_YEARS,
+    "net_debt":  net_debt,
+    "shares":    shares_outstanding,
+}
+
+fcf_prognose, base_result = dcf_schedule(base_params)
 
 tv         = fcf_prognose[-1]["FCF"] * (1 + g2) / (wacc - g2)
-pv_tv      = tv / (1 + wacc) ** FORECAST_YEARS
-pv_fcf_sum = sum(d["PV_FCF"] for d in fcf_prognose)
-ev_dcf     = pv_fcf_sum + pv_tv
+pv_tv      = base_result["pv_terminal_value"]
+pv_fcf_sum = base_result["ev"] - pv_tv
+ev_dcf     = base_result["ev"]
 tv_anteil  = pv_tv / ev_dcf if ev_dcf > 0 else 0
 
-equity_value     = ev_dcf - net_debt
-equity_per_share = equity_value / shares_outstanding
+equity_value     = base_result["equity"]
+equity_per_share = base_result["value_per_share"]
 upside           = (equity_per_share / current_price - 1) * 100
-valuation        = ("UNDERVALUED" if upside > 10
-                    else "OVERVALUED" if upside < -10
-                    else "FAIR VALUED")
+valuation        = classify_valuation(upside)
 
 # ── 1d: Sensitivity matrix ──────────────────────────────────
 WACC_RANGE = [0.08, 0.09, 0.10, 0.11, 0.12, 0.13, 0.14]
 G1_RANGE   = [0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08]
 
 
-def _dcf_eps(w, gp1):
-    if w <= g2:
-        return float("nan")
-    f_t = fcf_norm
-    pv  = 0.0
-    for t in range(1, FORECAST_YEARS + 1):
-        f_t  = f_t * (1 + gp1)
-        pv  += f_t / (1 + w) ** t
-    return (pv + f_t * (1 + g2) / (w - g2) / (1 + w) ** FORECAST_YEARS - net_debt) / shares_outstanding
-
-
-matrix   = [[_dcf_eps(w, g) for g in G1_RANGE] for w in WACC_RANGE]
+matrix   = sensitivity_matrix(base_params, WACC_RANGE, G1_RANGE)
 x_labels = [f"{g:.0%}" for g in G1_RANGE]
 y_labels = [f"{w:.0%}" for w in WACC_RANGE]
 
@@ -189,25 +192,14 @@ g1_idx   = int(np.argmin([abs(g - g1)   for g  in G1_RANGE]))
 
 # ── 1e: Monte Carlo ──────────────────────────────────────────
 FCF_STD_FACTOR = 0.15
-np.random.seed(42)
-wacc_sim = np.clip(np.random.normal(wacc,     WACC_STD,                  SIMULATIONS), 0.04, None)
-g1_sim   = np.clip(np.random.normal(g1,       GROWTH_STD,              SIMULATIONS), 0.00, None)
-fcf0_sim =         np.random.normal(fcf_norm, fcf_norm * FCF_STD_FACTOR, SIMULATIONS)
 
-
-def _mc_dcf(ws, gs, f0):
-    if ws <= g2:
-        return float("nan")
-    f_t = f0
-    pv  = 0.0
-    for t in range(1, FORECAST_YEARS + 1):
-        f_t  = f_t * (1 + gs)
-        pv  += f_t / (1 + ws) ** t
-    return (pv + f_t * (1 + g2) / (ws - g2) / (1 + ws) ** FORECAST_YEARS - net_debt) / shares_outstanding
-
-
-mc_raw     = np.array([_mc_dcf(w, g, f) for w, g, f in zip(wacc_sim, g1_sim, fcf0_sim)])
-mc_results = mc_raw[~np.isnan(mc_raw)]
+mc_results = simulate_dcf(
+    base_params,
+    n              = SIMULATIONS,
+    wacc_std       = WACC_STD,
+    growth_std     = GROWTH_STD,
+    fcf_std_factor = FCF_STD_FACTOR,
+)
 mc_mean    = float(np.mean(mc_results))
 mc_median  = float(np.median(mc_results))
 mc_std     = float(np.std(mc_results))
@@ -271,7 +263,7 @@ _wf_y_tv  = [pv_tv / 1e9]
 
 fig2 = go.Figure()
 fig2.add_trace(go.Bar(
-    x=[f"PV J{d['Year']}" for d in fcf_prognose],
+    x=[f"PV J{int(d['Year'])}" for d in fcf_prognose],
     y=_wf_y_fcf,
     marker_color=BLUE_1, marker_opacity=0.85, marker_line_width=0,
     name="PV FCF",
@@ -579,7 +571,7 @@ s2_content = (
 
 # ── Section 3: DCF Base Case ─────────────────────────────────
 _prows = "".join(
-    f'<tr><td>Year {d["Year"]}</td>'
+    f'<tr><td>Year {int(d["Year"])}</td>'
     f'<td>{d["FCF"]/1e9:.3f}</td>'
     f'<td>{d["PV_FCF"]/1e9:.3f}</td></tr>\n'
     for d in fcf_prognose
