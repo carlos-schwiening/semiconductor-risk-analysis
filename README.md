@@ -230,7 +230,7 @@ The table below translates each ticker's simulated loss distribution into VaR/CV
 
 ## Tech Stack
 
-Python 3.9+ (CI runs 3.12) · pandas · numpy · scipy · plotly · openpyxl
+Python 3.12+ (CI runs 3.12 and 3.13) · pandas · numpy · scipy · plotly · openpyxl
 
 ```bash
 git clone https://github.com/carlos-schwiening/semiconductor-risk-analysis

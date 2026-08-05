@@ -9,12 +9,20 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # The README states a minimum Python version; running the suite against the
+    # oldest supported one and the newest turns that statement into something
+    # verified rather than assumed. fail-fast is off so one red version does not
+    # hide the result of the others.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install package + dev dependencies
         run: pip install -e ".[dev]"
