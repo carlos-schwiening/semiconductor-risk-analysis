@@ -34,13 +34,15 @@ $$DD = \frac{\ln(V/D) + (\mu - \frac{1}{2}\sigma_V^2)T}{\sigma_V\sqrt{T}}$$
 
 IFRS 9 `ECL` integration classifies each borrower into Stage 1 ($DD$ > 4, 12-month `ECL`), Stage 2 ($DD$ 2–4, lifetime `ECL`), or Stage 3 ($DD$ < 2, `LGD` × `EAD`). The model also produces a quarterly Rating Migration Matrix showing transition probabilities between rating buckets, an `LGD` sensitivity analysis across Bear/Base/Bull scenarios, and a five-ticker summary Excel workbook.
 
-| Ticker | Company | Distance to Default | Rating | $PD$ (%) | IFRS 9 Stage | Spread (bps) |
-|--------|---------|--------------------:|--------|-------:|:-------------|-------------:|
-| MCHP | Microchip Technology | 5.14 | BBB | 0.00% | Stage 1 | 63 |
-| INTC | Intel Corporation | 3.65 | BB | 0.01% | Stage 2 | 161 |
-| ON | ON Semiconductor | 4.17 | BBB | 0.00% | Stage 1 | 94 |
-| QCOM | Qualcomm | 6.52 | A | 0.00% | Stage 1 | 22 |
-| MPWR | Monolithic Power Systems | 13.88 | AAA/AA | 0.00% | Stage 1 | < 1 |
+| Ticker | Company | Distance to Default | Rating | $PD$ (%) | IFRS 9 Stage | Model Spread (bps) | Market Benchmark (bps) |
+|--------|---------|--------------------:|--------|-------:|:-------------|-------------------:|:----------------------|
+| MCHP | Microchip Technology | 5.14 | BBB | 0.0000% | Stage 1 | 0.0 | 120–180 |
+| INTC | Intel Corporation | 3.65 | BB | 0.0131% | Stage 2 | 0.6 | 250–400 |
+| ON | ON Semiconductor | 4.17 | BBB | 0.0015% | Stage 1 | 0.1 | 120–180 |
+| QCOM | Qualcomm | 6.52 | A | 0.0000% | Stage 1 | 0.0 | 60–90 |
+| MPWR | Monolithic Power Systems | 13.88 | AAA/AA | 0.0000% | Stage 1 | 0.0 | 30–50 |
+
+**The model spread sits far below the market benchmark for every ticker — that gap is a result, not an error.** The theoretical spread follows from the risk-neutral $PD$ via $s = -\ln(1 - PD \cdot LGD)\,/\,T$, and at a one-year horizon the Merton $PD$ for an investment-grade issuer is vanishingly small: a $DD$ of 5.14 corresponds to a $PD$ of roughly $10^{-7}$. The structural model therefore prices almost no credit risk, while observed market spreads compensate for liquidity, recovery uncertainty, and the jump-to-default risk that a diffusion process cannot represent. This is the well-documented credit spread puzzle of structural models at short horizons. The script reports the comparison explicitly for the active ticker (`Model UNDER market range`), which is why the benchmark band is shown alongside rather than in place of the model output — the informative content of the Merton model here lies in the $DD$ ranking and the IFRS 9 staging, not in the absolute spread level.
 
 ![KMV Asset Value Simulation](images/INTC_KMV_Textbook.png)
 
