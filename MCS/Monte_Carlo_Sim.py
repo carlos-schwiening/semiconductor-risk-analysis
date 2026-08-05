@@ -463,11 +463,19 @@ for _rn in _regime_names:
 
 # region Block 8 - Portfolio VaR DCF
 
+# Equity carries limited liability: its value cannot fall below zero. That is the
+# same assumption Model 1 makes when it prices equity as a call option with payoff
+# max(V - D, 0). The simulated value relative to the current price is therefore
+# floored at 0.0 - a negative floor would let a simulated DCF value below zero
+# produce a "loss" above 100%, which no equity holder can suffer.
+REL_FLOOR = 0.0
+REL_CAP   = 5.0
+
 _ptf_rel = np.zeros(N_SIM)
 for _tkr in _TICKERS_5:
     _wa  = _sim_wa_regime[_tkr]
     _rel = np.where(np.isnan(_wa) | (_ticker_price[_tkr] == 0), 1.0, _wa / _ticker_price[_tkr])
-    _rel = np.clip(_rel, -2.0, 5.0)
+    _rel = np.clip(_rel, REL_FLOOR, REL_CAP)
     _ptf_rel += 0.20 * _rel
 
 _ptf_value = _ptf_rel * 100       # normalized to 100
@@ -483,22 +491,64 @@ _indiv_stds = []
 for _tkr in _TICKERS_5:
     _wa = _sim_wa_regime[_tkr]
     _rel = np.where(np.isnan(_wa) | (_ticker_price[_tkr] == 0), 1.0, _wa / _ticker_price[_tkr])
-    _indiv_stds.append(float(np.nanstd(np.clip(_rel, -2.0, 5.0)) * 100))
+    _indiv_stds.append(float(np.nanstd(np.clip(_rel, REL_FLOOR, REL_CAP)) * 100))
 _port_std    = float(np.nanstd(_ptf_value))
 _avg_std     = float(np.mean(_indiv_stds))
 _divers      = 1.0 - _port_std / _avg_std if _avg_std > 0 else 0.0
 
+# A DCF cannot value a company whose normalized FCF is negative: every simulated
+# equity value comes out non-positive, and after the floor the ticker sits at a
+# 100% loss in all 10,000 draws. Reporting that as a risk measure would be wrong
+# twice over - it is the model failing rather than a statement about the company,
+# and a printed 100% reads as a certain default, which contradicts the PD this
+# same repository derives from the Merton model (INTC: 0.0131%). Such tickers are
+# therefore reported as n/a, not as a number.
+_DCF_APPLICABLE = [t for t in _TICKERS_5 if _ticker_fcf[t] > 0]
+_DCF_EXCLUDED   = [t for t in _TICKERS_5 if t not in _DCF_APPLICABLE]
+
 # Per-ticker VaR/CVaR (analogous to the portfolio logic, per ticker)
 _ticker_risk = {}
 for _tkr in _TICKERS_5:
+    if _tkr not in _DCF_APPLICABLE:
+        _ticker_risk[_tkr] = {"VaR_95": float("nan"), "VaR_99": float("nan"),
+                              "CVaR_99": float("nan")}
+        continue
     _wa_tkr   = _sim_wa_regime[_tkr]
     _rel_tkr  = np.where(np.isnan(_wa_tkr) | (_ticker_price[_tkr] == 0), 1.0, _wa_tkr / _ticker_price[_tkr])
-    _rel_tkr  = np.clip(_rel_tkr, -2.0, 5.0)
+    _rel_tkr  = np.clip(_rel_tkr, REL_FLOOR, REL_CAP)
     _loss_tkr = 100.0 - (_rel_tkr * 100)
     _var95_t  = float(np.percentile(_loss_tkr, 95))
     _var99_t  = float(np.percentile(_loss_tkr, 99))
     _cvar99_t = float(np.mean(_loss_tkr[_loss_tkr >= _var99_t]))
     _ticker_risk[_tkr] = {"VaR_95": _var95_t, "VaR_99": _var99_t, "CVaR_99": _cvar99_t}
+
+# The headline portfolio therefore covers the tickers with an applicable DCF. The
+# all-five variant is still computed and printed below it for transparency, but it
+# carries an excluded ticker pinned at total loss and is labelled as such.
+if _DCF_APPLICABLE and _DCF_EXCLUDED:
+    _w_app   = 1.0 / len(_DCF_APPLICABLE)
+    _app_rel = np.zeros(N_SIM)
+    for _tkr in _DCF_APPLICABLE:
+        _wa_a  = _sim_wa_regime[_tkr]
+        _rel_a = np.where(np.isnan(_wa_a) | (_ticker_price[_tkr] == 0), 1.0, _wa_a / _ticker_price[_tkr])
+        _app_rel += _w_app * np.clip(_rel_a, REL_FLOOR, REL_CAP)
+    _app_value  = _app_rel * 100
+    _app_median = float(np.median(_app_value))
+    _app_loss   = 100.0 - _app_value
+    _app_var95  = float(np.percentile(_app_loss, 95))
+    _app_var99  = float(np.percentile(_app_loss, 99))
+    _app_cvar99 = float(np.mean(_app_loss[_app_loss >= _app_var99]))
+
+    # The diversification effect needs the same treatment. An excluded ticker sits
+    # at a constant zero after the floor, contributing no variance at all, which
+    # would depress the average single-name volatility and understate the effect.
+    _app_stds     = [s for t, s in zip(_TICKERS_5, _indiv_stds) if t in _DCF_APPLICABLE]
+    _app_port_std = float(np.nanstd(_app_rel * 100))
+    _app_avg_std  = float(np.mean(_app_stds))
+    _app_divers   = 1.0 - _app_port_std / _app_avg_std if _app_avg_std > 0 else 0.0
+else:
+    _app_var95 = _app_var99 = _app_cvar99 = float("nan")
+    _app_port_std = _app_avg_std = _app_divers = _app_median = float("nan")
 
 print(f"\n{'='*60}")
 print(f"=== Block 8 — Portfolio VaR (DCF, equal-weighted 20% per ticker) ===")
@@ -514,6 +564,13 @@ print(f"{'CVaR 99% (Expected Shortfall)':<35} {_ptf_cvar_99:>12.2f}")
 print(f"{'P(Portfolio > 100, Undervalued)':<35} {_p_under_ptf:>12.1%}")
 print(f"{'Average Individual Std':<35} {_avg_std:>12.2f}")
 print(f"{'Diversification Effect':<35} {_divers:>12.1%}")
+if not np.isnan(_app_divers):
+    print()
+    print(f"Over the {len(_DCF_APPLICABLE)} tickers with an applicable DCF "
+          f"(excluding {', '.join(_DCF_EXCLUDED)}):")
+    print(f"{'  Portfolio Median':<35} {_app_median:>12.2f}")
+    print(f"{'  Portfolio Std Dev':<35} {_app_port_std:>12.2f}")
+    print(f"{'  Diversification Effect':<35} {_app_divers:>12.1%}")
 print()
 print(f"{'Ticker':<8}" + "".join(f"{t:>8}" for t in _TICKERS_5))
 print(f"{'Std (%)':<8}" + "".join(f"{s:>8.2f}" for s in _indiv_stds))
@@ -523,9 +580,18 @@ print(f"{'Ticker':<10} {'VaR 95%':>10} {'VaR 99%':>10} {'CVaR 99%':>10}")
 print("-" * 42)
 for _tkr in _TICKERS_5:
     _r = _ticker_risk[_tkr]
-    print(f"{_tkr:<10} {_r['VaR_95']:>10.2f} {_r['VaR_99']:>10.2f} {_r['CVaR_99']:>10.2f}")
+    if np.isnan(_r["VaR_99"]):
+        print(f"{_tkr:<10} {'n/a':>10} {'n/a':>10} {'n/a':>10}   DCF not applicable")
+    else:
+        print(f"{_tkr:<10} {_r['VaR_95']:>10.2f} {_r['VaR_99']:>10.2f} {_r['CVaR_99']:>10.2f}")
 print("-" * 42)
-print(f"{'Portfolio':<10} {_ptf_var_95:>10.2f} {_ptf_var_99:>10.2f} {_ptf_cvar_99:>10.2f}")
+if not np.isnan(_app_var99):
+    print(f"{'Portfolio':<10} {_app_var95:>10.2f} {_app_var99:>10.2f} {_app_cvar99:>10.2f}"
+          f"   ({len(_DCF_APPLICABLE)} tickers, {1/len(_DCF_APPLICABLE):.0%} each)")
+    print(f"{'(all 5)':<10} {_ptf_var_95:>10.2f} {_ptf_var_99:>10.2f} {_ptf_cvar_99:>10.2f}"
+          f"   reference only — {', '.join(_DCF_EXCLUDED)} pinned at total loss")
+else:
+    print(f"{'Portfolio':<10} {_ptf_var_95:>10.2f} {_ptf_var_99:>10.2f} {_ptf_cvar_99:>10.2f}")
 
 # Histogram: portfolio loss distribution
 _x_lo_p = min(-40.0, float(np.percentile(_ptf_loss, 0.5)) - 5)
@@ -998,8 +1064,15 @@ for _tkr in _TICKERS_5:
         "VaR_99":  round(_r["VaR_99"],  3),
         "CVaR_99": round(_r["CVaR_99"], 3),
     })
+if not np.isnan(_app_var99):
+    _risk_rows.append({
+        "Ticker":  f"Portfolio_{len(_DCF_APPLICABLE)}_applicable",
+        "VaR_95":  round(_app_var95,  3),
+        "VaR_99":  round(_app_var99,  3),
+        "CVaR_99": round(_app_cvar99, 3),
+    })
 _risk_rows.append({
-    "Ticker":  "Portfolio",
+    "Ticker":  "Portfolio_all_5_reference",
     "VaR_95":  round(_ptf_var_95,  3),
     "VaR_99":  round(_ptf_var_99,  3),
     "CVaR_99": round(_ptf_cvar_99, 3),

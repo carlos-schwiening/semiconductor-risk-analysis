@@ -22,7 +22,7 @@ I chose the semiconductor sector because it sits at the intersection of cyclical
 
 ¹ INTC's normalized free cash flow is −$9.62 Bn. A DCF discounts the cash a company is expected to generate, so a negative starting point yields the present value of continued cash burn — arithmetically −$70.11 per share, or −165.5% "upside" — rather than an intrinsic value. Reporting that number as a valuation would be a category error, so the model states the limitation instead and points to the two measures that do carry information for INTC: the Merton credit model (Stage 2, `DD` = 3.65) and the multiples cross-check.
 
-The Monte Carlo simulation (10,000 runs, $\rho$ = 60% sector correlation, three macro regimes) yields a portfolio `VaR` 99% of 100.57% (normalized to 100), reflecting that all five names trade at significant premiums to their base-case DCF fair values. The Tornado Chart identifies `FCF` as the largest uncertainty driver, with a ±6.6% impact on `VaR` 99% across the P10–P90 range.
+The Monte Carlo simulation (10,000 runs, $\rho$ = 60% sector correlation, three macro regimes) yields a portfolio `VaR` 99% of 84.57% (normalized to 100) across the four tickers whose DCF applies, reflecting that they all trade at significant premiums to their base-case DCF fair values. The Tornado Chart identifies `FCF` as the largest uncertainty driver, with a ±6.6% impact on `VaR` 99% across the P10–P90 range.
 
 ---
 
@@ -164,29 +164,38 @@ Each parameter's distribution shape reflects a specific assumption about its emp
 | `FCF` | Log-Normal ($\sigma$ = 25%) | $2.47 Bn | $1.75 Bn | $3.34 Bn |
 | $g_2$ (Terminal growth) | Uniform (1.5%–3.5%) | 2.5% | 1.7% | 3.3% |
 
-**Portfolio Risk (MCHP/INTC/ON/QCOM/MPWR, equal weight, normalized to 100):**
+**Portfolio Risk (MCHP/ON/QCOM/MPWR, equal weight, normalized to 100):**
 
 | Metric | Value |
 |--------|------:|
-| Portfolio Median | 21.84 |
-| `VaR` 95% | 96.16% loss |
-| `VaR` 99% | 100.57% loss |
-| `CVaR` 99% (Expected Shortfall) | 102.51% loss |
-| Diversification Effect vs. Single Names | 27.6% Std reduction |
+| Portfolio Median | 46.05 |
+| `VaR` 95% | 80.44% loss |
+| `VaR` 99% | 84.57% loss |
+| `CVaR` 99% (Expected Shortfall) | 85.77% loss |
+| Diversification Effect vs. Single Names | 6.3% Std reduction |
 | Largest Uncertainty Driver | `FCF` (±6.6% impact on `VaR` 99%) |
+
+**Limited liability caps the loss at 100%.** A simulated equity value is floored at zero before it enters the loss distribution, because a shareholder can lose the capital invested but no more. This is the same assumption Model 1 rests on, where equity is priced as a call option with payoff $\max(V-D,\,0)$ — the three models share it rather than each making its own.
 
 ![QCOM Monte Carlo Dashboard](images/QCOM_MCS_Dashboard.png)
 
-The table below translates each ticker's simulated loss distribution into VaR/CVaR terms relative to its current market price (100% = no loss; values above 100% mean the simulated DCF value turns negative in the tail). INTC stands out with materially higher risk — its negative free cash flow pulls a large share of the simulated distribution below zero, pushing VaR/CVaR figures far beyond the other four names. Because INTC's mean FCF is negative, the Log-Normal sampling — which requires a positive mean — falls back to a Normal distribution centered on that negative mean, with the standard deviation scaled to the same magnitude (|mean| × 25%) rather than a fixed value, preserving the intended relative uncertainty without requiring a sign change in the input. The portfolio VaR 99% (100.6%) sits below the average of the single-name VaRs, which is the concrete evidence of the diversification effect from spreading across five tickers even under a 60% sector correlation assumption.
+The table below translates each ticker's simulated loss distribution into VaR/CVaR terms relative to its current market price (100% = no loss, 100% = total loss).
 
 | Ticker | VaR 95% | VaR 99% | CVaR 99% |
 |---|---|---|---|
 | MCHP | 76.6% | 83.0% | 84.2% |
-| INTC | 206.6% | 227.4% | 242.2% |
+| INTC | — ¹ | — ¹ | — ¹ |
 | ON | 79.0% | 84.0% | 85.1% |
 | QCOM | 78.7% | 83.4% | 84.4% |
 | MPWR | 92.2% | 93.4% | 93.7% |
-| **Portfolio** | **96.2%** | **100.6%** | **102.5%** |
+| **Portfolio** (4 tickers, 25% each) | **80.4%** | **84.6%** | **85.8%** |
+| *All five, for reference* ² | *84.4%* | *87.7%* | *88.6%* |
+
+¹ **No DCF-based risk measure is reported for INTC, because the model that would produce it does not apply.** Its normalized `FCF` is −$9.62 Bn, so every simulated equity value comes out negative and the floor sends all 10,000 draws to a total loss. Printing the resulting 100% would state something the model cannot support and would read as a certain default — while the Merton model in this same repository puts INTC's one-year `PD` at 0.0131%. Model 1 is the applicable tool here, and it does rank INTC as the weakest of the five (`DD` = 3.65, IFRS 9 Stage 2) without needing a cash flow forecast at all. Where one model reaches its limit, another still answers, which is the reason for running all three. (On the sampling: Log-Normal draws require a positive mean, so `FCF` falls back to a Normal distribution centred on the negative mean with its standard deviation scaled to the same magnitude, |mean| × 25% — the intended relative uncertainty is preserved without a sign change.)
+
+² Kept visible rather than dropped: including INTC pins a fifth of the portfolio at total loss by construction, which is why the four-ticker figure is the one reported. INTC is excluded from this measure only — it remains fully part of the study in Models 1 and 2.
+
+**The diversification effect is small — 6.3% standard deviation reduction — and that is the expected outcome.** All five companies come from one sector, and the model itself imposes 60% pairwise correlation between them. Diversification arises from combining assets that move independently, which is precisely what this portfolio does not do. The number is consistent with the deliberate design of the study: the semiconductor sector was chosen for its concentration and cyclicality in order to stress-test the credit models, not to build a diversified portfolio. Computing the same measure over only the four tickers with an applicable DCF yields 6.3% as well, so the result does not hinge on how INTC is handled.
 
 ---
 
