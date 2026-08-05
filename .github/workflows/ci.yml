@@ -19,12 +19,12 @@ jobs:
       - name: Install package + dev dependencies
         run: pip install -e ".[dev]"
 
-      # Scoped to the two modules with full type hints so far (Merton_Model.py,
-      # merton_core.py). DCF_Valuation.py, DCF_Report.py, and Monte_Carlo_Sim.py are
-      # not yet type-annotated and have known pre-existing mypy findings; widen this
-      # scope once they are cleaned up.
+      # Scoped to the modules with full type hints so far (Merton_Model.py,
+      # merton_core.py, dcf_core.py). DCF_Valuation.py, DCF_Report.py, and
+      # Monte_Carlo_Sim.py are not yet type-annotated and have known pre-existing
+      # mypy findings; widen this scope once they are cleaned up.
       - name: Type check (mypy)
-        run: mypy Merton/Merton_Model.py Merton/merton_core.py
+        run: mypy Merton/Merton_Model.py Merton/merton_core.py DCF/dcf_core.py
 
       - name: Run tests (pytest)
         run: pytest -v
