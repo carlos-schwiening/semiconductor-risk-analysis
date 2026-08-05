@@ -19,15 +19,18 @@ jobs:
       - name: Install package + dev dependencies
         run: pip install -e ".[dev]"
 
-      # The Merton and DCF modules are fully annotated; mypy.ini rejects
-      # unannotated definitions, so this scope is checked in full rather than
-      # skipping function bodies. MCS/Monte_Carlo_Sim.py is not annotated yet
-      # and has known pre-existing findings — add it once it is cleaned up.
+      # The three model entry points and their core modules are fully annotated;
+      # mypy.ini rejects unannotated definitions, so these files are checked in
+      # full rather than having their function bodies skipped. Still outside the
+      # scope: the Merton chart/report scripts (KMV_Textbook_Chart.py,
+      # DD_TimeSeries_Chart.py, Merton_Dashboard_Chart.py, Merton_Report.py,
+      # GBM_Paths_Export.py), which are plotting-only and not annotated yet.
       - name: Type check (mypy)
         run: >
           mypy Merton/Merton_Model.py Merton/merton_core.py
           DCF/dcf_core.py DCF/fmp_extract.py
           DCF/DCF_Valuation.py DCF/DCF_Report.py
+          MCS/Monte_Carlo_Sim.py
 
       - name: Run tests (pytest)
         run: pytest -v

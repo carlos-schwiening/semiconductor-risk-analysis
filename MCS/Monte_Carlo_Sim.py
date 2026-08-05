@@ -29,6 +29,7 @@ import argparse
 import importlib
 import warnings
 from datetime import date
+from typing import Any, Callable, Optional, TypedDict, cast
 
 import numpy as np
 import pandas as pd
@@ -77,7 +78,7 @@ from Merton.merton_core import merton_model
 # region Block 1 - Portfolio Setup
 
 
-def _load_json(filename):
+def _load_json(filename: str) -> Any:
     with open(os.path.join(CACHE_FOLDER, filename), "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -88,7 +89,8 @@ _df         = pd.DataFrame(_prices_raw)
 _df["date"] = pd.to_datetime(_df["date"])
 _df         = _df.sort_values("date").set_index("date")
 _prices     = _df["close"]
-_log_ret    = np.log(_prices / _prices.shift(1)).dropna()
+# cast: pandas-stubs types np.log() on a Series as ndarray, it returns a Series
+_log_ret    = cast(pd.Series, np.log(_prices / _prices.shift(1))).dropna()
 _sigma_e    = float(_log_ret.std() * np.sqrt(252))
 
 _bs         = _load_json(f"{TICKER}_balance-sheet-statement.json")[0]
@@ -198,7 +200,23 @@ ul_pct = UL * 100
 
 N_SIM = 10_000
 
-DISTRIBUTIONS = {
+class DistributionSpec(TypedDict, total=False):
+    """
+    Parameters of one input distribution. Which keys are present depends on
+    "type" — a normal has "std", a uniform has "min"/"max", and so on. total=False
+    keeps that flexible while still typing every value as a number instead of the
+    dict[str, object] that mypy would otherwise infer from the mixed literal.
+    """
+    type: str
+    std: float
+    min: float
+    max: float
+    sigma: float
+    alpha: float
+    beta_param: float
+
+
+DISTRIBUTIONS: dict[str, DistributionSpec] = {
     "WACC": {"type": "normal",     "std": 0.015},
     "g1":   {"type": "triangular", "min": 0.00, "max": 0.12},
     "FCF":  {"type": "lognormal",  "sigma": 0.25},
@@ -208,7 +226,7 @@ DISTRIBUTIONS = {
 }
 
 
-def sample_distribution(name, mu, n, seed=None):
+def sample_distribution(name: str, mu: float, n: int, seed: Optional[int] = None) -> np.ndarray:
     """Draw n samples from the configured distribution for parameter `name`."""
     if seed is not None:
         np.random.seed(seed)
@@ -233,7 +251,7 @@ def sample_distribution(name, mu, n, seed=None):
         return np.full(n, mu)
 
 
-def apply_distribution(name, mu, z_arr):
+def apply_distribution(name: str, mu: float, z_arr: np.ndarray) -> np.ndarray:
     """Transform standard-normal z_arr to target distribution via Gaussian copula."""
     dist  = DISTRIBUTIONS[name]
     dtype = dist["type"]
@@ -332,7 +350,15 @@ _Z_indep = np.random.standard_normal((N_SIM, 5))
 _Z_corr  = _Z_indep @ _L_CHOL.T  # shape (N_SIM, 5) — correlated
 
 
-def _dcf_array(wacc_arr, g1_arr, fcf_start_arr, g2_arr, prog, nd, shares):
+def _dcf_array(
+    wacc_arr: np.ndarray,
+    g1_arr: np.ndarray,
+    fcf_start_arr: np.ndarray,
+    g2_arr: np.ndarray,
+    prog: float,
+    nd: float,
+    shares: float,
+) -> np.ndarray:
     """Vectorized two-phase DCF. Returns equity-per-share array (NaN if invalid)."""
     valid  = wacc_arr > g2_arr
     fcf_t  = np.where(fcf_start_arr > -1e13, fcf_start_arr, 0.0)
@@ -787,7 +813,12 @@ except Exception:
 # region Block 10 - Tornado Chart of Uncertainty
 
 
-def _ptf_var99_override(wacc_delta=0.0, g1_delta=0.0, fcf_mult=1.0, g2_delta=0.0):
+def _ptf_var99_override(
+    wacc_delta: float = 0.0,
+    g1_delta: float = 0.0,
+    fcf_mult: float = 1.0,
+    g2_delta: float = 0.0,
+) -> float:
     """Compute portfolio VaR 99% with uniform parameter override across all tickers."""
     _pv = np.zeros(N_SIM)
     for _ti, _tkr in enumerate(_TICKERS_5):
@@ -804,14 +835,30 @@ def _ptf_var99_override(wacc_delta=0.0, g1_delta=0.0, fcf_mult=1.0, g2_delta=0.0
 
 _base_var_tor = _ptf_var99_override()
 
-_TORNADO_PARAMS = {
+class TornadoParam(TypedDict):
+    """One tornado input: its mean, plus how P10/P90 translate into an override."""
+    mu: float
+    delta_fn: Callable[[float, float, float], tuple[float, float, str]]
+
+
+class TornadoRow(TypedDict):
+    """One result row of the tornado analysis (also a sheet in the workbook)."""
+    Parameter: str
+    P10_VaR99: float
+    P90_VaR99: float
+    P10_Impact: float
+    P90_Impact: float
+    Total_Impact: float
+
+
+_TORNADO_PARAMS: dict[str, TornadoParam] = {
     "WACC": {"mu": float(np.mean(list(_ticker_wacc.values()))), "delta_fn": lambda p10, p90, mu: (p10 - mu, p90 - mu, "wacc_delta")},
     "g1":   {"mu": float(np.mean(list(_ticker_g1.values()))),   "delta_fn": lambda p10, p90, mu: (p10 - mu, p90 - mu, "g1_delta")},
     "FCF":  {"mu": 2.5e9,                                       "delta_fn": lambda p10, p90, mu: (p10 / mu, p90 / mu, "fcf_mult")},
     "g2":   {"mu": float(np.mean(list(_ticker_g2.values()))),   "delta_fn": lambda p10, p90, mu: (p10 - mu, p90 - mu, "g2_delta")},
 }
 
-_tornado_rows = []
+_tornado_rows: list[TornadoRow] = []
 for _pn, _pinfo in _TORNADO_PARAMS.items():
     _mu_p  = _pinfo["mu"]
     _samp  = sample_distribution(_pn, _mu_p, 50_000, seed=42)
@@ -961,7 +1008,14 @@ df_risk_comp = pd.DataFrame(_risk_rows)
 print(df_risk_comp.to_string(index=False))
 
 
-def export_excel_mcs(df_portfolio, df_ticker, df_convergence, df_tornado, df_risk, output_path):
+def export_excel_mcs(
+    df_portfolio: pd.DataFrame,
+    df_ticker: pd.DataFrame,
+    df_convergence: pd.DataFrame,
+    df_tornado: pd.DataFrame,
+    df_risk: pd.DataFrame,
+    output_path: str,
+) -> str:
     """Export all MCS results to a single .xlsx workbook (one sheet per result set)."""
     excel_path = os.path.join(output_path, f"MCS_Results_{TICKER}.xlsx")
     with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
