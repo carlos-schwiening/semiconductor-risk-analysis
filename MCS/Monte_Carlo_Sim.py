@@ -58,7 +58,7 @@ RISK_FREE_RATE = config.RISK_FREE_RATE
 MATURITY          = config.MATURITY
 
 CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
-OUTPUT_DIR = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Visualisierung"
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "Outputs", "Visualisierung")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 from plot_style import LAYOUT, BLUE_1, BLUE_2, BLUE_3, ORANGE_1, ORANGE_2, ORANGE_3, GRAY_1

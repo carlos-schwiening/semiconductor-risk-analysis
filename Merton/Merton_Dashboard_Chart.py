@@ -38,8 +38,8 @@ from plot_style import (
     GRAY_1,
 )
 
-EXCEL_DIR      = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Excel"
-VIZ_DIR        = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Visualisierung"
+EXCEL_DIR      = os.path.join(PROJECT_ROOT, "Outputs", "Excel")
+VIZ_DIR        = os.path.join(PROJECT_ROOT, "Outputs", "Visualisierung")
 TODAY          = date.today().strftime("%Y-%m-%d")
 RATING_ORDER   = ["AAA/AA", "A", "BBB", "BB", "B", "CCC"]
 TICKER_LIST    = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]

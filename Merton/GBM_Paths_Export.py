@@ -30,7 +30,7 @@ if PROJECT_ROOT not in sys.path:
 
 TICKER_LIST    = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 CACHE_FOLDER   = r"C:\Python\Data\FMP\FMP_Cache"
-OUTPUT_DIR     = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Excel"
+OUTPUT_DIR     = os.path.join(PROJECT_ROOT, "Outputs", "Excel")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)

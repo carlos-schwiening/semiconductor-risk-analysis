@@ -31,7 +31,7 @@ from plot_style import (
     AXIS_DEFAULTS, SOURCE_TEXT,
 )
 
-REPORTS_BASE = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Excel"
+REPORTS_BASE = os.path.join(PROJECT_ROOT, "Outputs", "Excel")
 IMAGES_DIR   = os.path.join(PROJECT_ROOT, "images")
 TODAY        = date.today().strftime("%Y-%m-%d")
 TICKER_LIST  = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]

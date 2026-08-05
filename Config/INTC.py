@@ -3,6 +3,8 @@ Used by: Merton/Merton_Model.py, DCF/DCF_Valuation.py, MCS/Monte_Carlo_Sim.py
 Intel Corporation - Configuration for DCF_Merton_MC
 """
 
+import os
+
 # region COMPANY
 COMPANY           = "Intel Corporation"
 TICKER            = "INTC"
@@ -28,5 +30,6 @@ SIMULATIONS      = 10000
 # endregion
 
 # region OUTPUT
-OUTPUT_DIR        = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs"
+PROJECT_ROOT      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+OUTPUT_DIR        = os.path.join(PROJECT_ROOT, "Outputs")
 # endregion

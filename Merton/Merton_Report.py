@@ -33,7 +33,7 @@ if PROJECT_ROOT not in sys.path:
 
 TICKER_LIST   = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
-OUTPUT_DIR    = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Reports"
+OUTPUT_DIR    = os.path.join(PROJECT_ROOT, "Outputs", "Reports")
 NAVBAR_BG     = "#0B1220"
 SIDEBAR_BG    = "#F1F5F9"
 os.makedirs(OUTPUT_DIR, exist_ok=True)

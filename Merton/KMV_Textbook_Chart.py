@@ -40,7 +40,7 @@ except ImportError:  # running directly as a script (python Merton/KMV_Textbook_
 
 TICKER_LIST   = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 CACHE_FOLDER  = r"C:\Python\Data\FMP\FMP_Cache"
-OUTPUT_DIR = r"C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Visualisierung"
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "Outputs", "Visualisierung")
 
 TODAY   = date.today().strftime("%Y-%m-%d")
 N_PATHS = 15      # 14 gray + 1 highlighted in ticker color

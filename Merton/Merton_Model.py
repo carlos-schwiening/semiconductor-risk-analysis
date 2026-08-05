@@ -1051,7 +1051,7 @@ create_lgd_chart(df_lgd, VIZ_DIR)
 # Read back by the Merton chart scripts (Dashboard, DD time series).
 # ─────────────────────────────────────────────────────────────
 
-REPORTS_BASE = os.path.join(config.OUTPUT_DIR, "Excel")   # C:\Python\Projects\Public\semiconductor-risk-analysis\Outputs\Excel
+REPORTS_BASE = os.path.join(config.OUTPUT_DIR, "Excel")   # <project>/Outputs/Excel
 os.makedirs(REPORTS_BASE, exist_ok=True)
 
 # 1. Summary — all 5 tickers
