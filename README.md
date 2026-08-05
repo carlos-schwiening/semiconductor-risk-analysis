@@ -1,5 +1,7 @@
 # Semiconductor Risk Analysis
 
+[![CI](https://github.com/carlos-schwiening/semiconductor-risk-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/carlos-schwiening/semiconductor-risk-analysis/actions/workflows/ci.yml)
+
 This repository contains quantitative risk models I developed during my Master's in Accounting, Finance & Controlling. I am publishing it as one of several projects in my public portfolio, showcasing applied financial modelling skills in Python for job applications.
 
 The project applies three quantitative risk models to a portfolio of five U.S. semiconductor companies — MCHP, INTC, ON, QCOM, MPWR — covering structural credit risk, DCF equity valuation, and Monte Carlo portfolio simulation. Each model is self-contained, reads from a local FMP data cache, and produces terminal output, Plotly charts, and multi-sheet Excel workbooks. Together they answer the questions: *How likely is each company to default? What is the equity fairly worth? And what is the tail risk of holding all five?* All models are calibrated on five years of historical price and fundamental data (June 2021 – June 2026), sourced from the FMP API.
@@ -13,10 +15,12 @@ I chose the semiconductor sector because it sits at the intersection of cyclical
 | Ticker | Company | Rating | Distance to Default | DCF Value/Share | Market Price | Upside | IFRS 9 Stage |
 |--------|---------|--------|--------------------:|----------------:|-------------:|-------:|:-------------|
 | MCHP | Microchip Technology | BBB | 5.14 | $61.03 | $87.91 | −30.6% | Stage 1 |
-| INTC | Intel Corporation | BB | 3.65 | negative | $107.04 | −165.5% | Stage 2 |
+| INTC | Intel Corporation | BB | 3.65 | not applicable ¹ | $107.04 | — | Stage 2 |
 | ON | ON Semiconductor | BBB | 4.17 | $56.56 | $110.17 | −48.7% | Stage 1 |
 | QCOM | Qualcomm | A | 6.52 | $100.25 | $191.20 | −47.6% | Stage 1 |
 | MPWR | Monolithic Power Systems | AAA/AA | 13.88 | $235.54 | $1,473.04 | −84.0% | Stage 1 |
+
+¹ INTC's normalized free cash flow is −$9.62 Bn. A DCF discounts the cash a company is expected to generate, so a negative starting point yields the present value of continued cash burn — arithmetically −$70.11 per share, or −165.5% "upside" — rather than an intrinsic value. Reporting that number as a valuation would be a category error, so the model states the limitation instead and points to the two measures that do carry information for INTC: the Merton credit model (Stage 2, `DD` = 3.65) and the multiples cross-check.
 
 The Monte Carlo simulation (10,000 runs, $\rho$ = 60% sector correlation, three macro regimes) yields a portfolio `VaR` 99% of 100.57% (normalized to 100), reflecting that all five names trade at significant premiums to their base-case DCF fair values. The Tornado Chart identifies `FCF` as the largest uncertainty driver, with a ±6.6% impact on `VaR` 99% across the P10–P90 range.
 
@@ -186,7 +190,7 @@ The table below translates each ticker's simulated loss distribution into VaR/CV
 
 ## Tech Stack
 
-Python 3.14 · pandas · numpy · scipy · plotly · openpyxl
+Python 3.9+ (CI runs 3.12) · pandas · numpy · scipy · plotly · openpyxl
 
 ```bash
 git clone https://github.com/carlos-schwiening/semiconductor-risk-analysis
@@ -220,6 +224,29 @@ other multi-ticker scripts process all five tickers regardless of `--ticker`;
 `DCF_Valuation.py`'s peer-group comparison block and `Monte_Carlo_Sim.py`'s
 correlated portfolio simulation likewise always include all five tickers
 alongside the `--ticker`-selected one.
+
+---
+
+## Code Structure
+
+Each model is split into a pure calculation module and a script that orchestrates it. The calculation modules take numbers and return numbers — no file access, no API calls, no charts — which is what makes them unit-testable and keeps a single formula from drifting apart across scripts.
+
+```
+Merton/merton_core.py   Merton model, rating table, credit spread
+DCF/dcf_core.py         Two-phase DCF, CAPM, sensitivities, Monte Carlo, classifiers
+DCF/fmp_extract.py      Cache access and FMP field mapping
+```
+
+`fmp_extract.py` is the only module that knows FMP field names. The calculation modules never see them, so replacing the data provider means changing that one file. The remaining scripts (`Merton_Model.py`, `DCF_Valuation.py`, `DCF_Report.py`, `Monte_Carlo_Sim.py`) load data, call the core modules, and handle output.
+
+## Tests & Continuous Integration
+
+[GitHub Actions](.github/workflows/ci.yml) runs on every push to `main`:
+
+- **51 tests** (`python -m pytest`) over the calculation modules. Deterministic functions are checked against closed-form results — with zero growth the DCF must collapse to `FCF / WACC`, and enterprise value must not depend on how the cash flows are split between forecast and terminal phase. Stochastic functions are tested on properties instead of fixed values: reproducibility under a fixed seed, correct ordering of the output range, wider dispersion under wider inputs.
+- **mypy** across all three model entry points and their core modules. `mypy.ini` sets `disallow_untyped_defs`, because mypy otherwise skips the bodies of unannotated functions — a green run without that flag says considerably less than it appears to.
+
+Both run in a clean environment on Ubuntu with Python 3.12, so a dependency that happens to be installed locally cannot mask a missing entry in `pyproject.toml`.
 
 ---
 
