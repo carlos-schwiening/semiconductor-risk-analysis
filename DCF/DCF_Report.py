@@ -14,7 +14,6 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 import os
-import json
 import argparse
 import importlib
 import warnings
@@ -22,7 +21,6 @@ import webbrowser
 from datetime import date
 
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 
 warnings.filterwarnings("ignore")
@@ -51,8 +49,6 @@ SIMULATIONS      = getattr(config, "SIMULATIONS",  10000)
 WACC_STD          = getattr(config, "WACC_STD",      0.015)
 GROWTH_STD      = getattr(config, "GROWTH_STD",  0.020)
 
-# Cache lives outside the repo: set FMP_CACHE_DIR, else the project-local default applies.
-CACHE_FOLDER  = os.environ.get("FMP_CACHE_DIR", os.path.join(PROJECT_ROOT, "data", "FMP_Cache"))
 OUTPUT_DIR    = os.path.join(config.OUTPUT_DIR, "Reports", ACTIVE_CONFIG)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -71,31 +67,25 @@ except ImportError:
                           cost_of_debt, dcf_schedule, effective_tax_rate,
                           sensitivity_matrix, simulate_dcf, wacc_capm)
 
+# FMP cache access and field mapping — the only place that knows FMP field names
+try:
+    from .fmp_extract import extract_wacc_inputs, load_json, load_prices
+except ImportError:
+    from fmp_extract import extract_wacc_inputs, load_json, load_prices  # type: ignore[import-not-found,no-redef]
+
 # endregion
 
 
 # region Block 1 - All Calculations
 
 
-def _load_json(filename):
-    with open(os.path.join(CACHE_FOLDER, filename), "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _load_prices(filename):
-    raw = _load_json(filename)
-    df  = pd.DataFrame(raw)
-    df["date"] = pd.to_datetime(df["date"])
-    return df.sort_values("date").set_index("date")["close"]
-
-
 print(f"Calculating DCF Report — {TICKER} ({COMPANY}) ...")
 
 # ── 1a: Load FMP cache ──────────────────────────────────────
-km         = _load_json(f"{TICKER}_key-metrics.json")[0]
-cf_list    = _load_json(f"{TICKER}_cash-flow-statement.json")[:5]
-inc_list   = _load_json(f"{TICKER}_income-statement.json")[:5]
-bs         = _load_json(f"{TICKER}_balance-sheet-statement.json")[0]
+km         = load_json(f"{TICKER}_key-metrics.json")[0]
+cf_list    = load_json(f"{TICKER}_cash-flow-statement.json")[:5]
+inc_list   = load_json(f"{TICKER}_income-statement.json")[:5]
+bs         = load_json(f"{TICKER}_balance-sheet-statement.json")[0]
 
 fcf        = [float(e.get("freeCashFlow",       0) or 0) for e in cf_list]
 cf_dates   = [e.get("date", "") for e in cf_list]
@@ -108,23 +98,12 @@ ev       = market_cap + total_debt - cash
 net_debt = total_debt - cash
 
 # ── 1b: WACC via CAPM ────────────────────────────────────────
-prices_ticker = _load_prices(f"{TICKER}_historical-price-eod_full.json")
-sp500         = _load_prices("SP500_historical-price-eod_full.json")
+prices_ticker = load_prices(f"{TICKER}_historical-price-eod_full.json")
+sp500         = load_prices("SP500_historical-price-eod_full.json")
 
 beta = calculate_beta(prices_ticker, sp500)
 
-# FMP field names stay in the script — dcf_core only ever sees plain numbers.
-interest_expense = 0.0
-for entry in inc_list:
-    i_exp = float(entry.get("interestExpense", 0) or 0)
-    if i_exp > 0 and total_debt > 0:
-        interest_expense = i_exp
-        break
-
-tax_and_ebt = [
-    (float(e.get("incomeTaxExpense", 0) or 0), float(e.get("incomeBeforeTax", 0) or 0))
-    for e in inc_list
-]
+interest_expense, tax_and_ebt = extract_wacc_inputs(inc_list, total_debt)
 
 wacc_res     = wacc_capm(
     beta       = beta,
@@ -142,18 +121,18 @@ wacc         = wacc_res["wacc_calc"]
 
 # ── 1c: DCF Base Case ────────────────────────────────────────
 fcf_norm           = float(np.median(fcf))
-
-# With a negative normalized FCF the DCF still returns a number, but it is the
-# present value of continued cash burn — not an intrinsic value. Flagged in the
-# terminal and as a banner in the report itself (see Section 1).
-fcf_norm_negative  = fcf_norm <= 0
-if fcf_norm_negative:
-    print(f"  [!] Normalized FCF is {fcf_norm/1e9:.2f} Bn USD — negative. The DCF figures in")
-    print(f"      this report are not a valuation; the report states this at the top.")
 g1                 = getattr(config, "GROWTH_MEAN", 0.05)
 g2                 = TERMINAL_GROWTH
 current_price       = float(prices_ticker.iloc[-1])
 shares_outstanding = market_cap / current_price
+
+# With a negative normalized FCF the DCF still returns a number, but it is the
+# present value of continued cash burn — not an intrinsic value. Flagged in the
+# terminal and as a banner in the report itself (see Section 1).
+fcf_norm_negative = fcf_norm <= 0
+if fcf_norm_negative:
+    print(f"  [!] Normalized FCF is {fcf_norm/1e9:.2f} Bn USD — negative. The DCF figures in")
+    print(f"      this report are not a valuation; the report states this at the top.")
 
 fcf_cagr = cagr(fcf[0], fcf[4], 4)
 

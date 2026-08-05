@@ -19,7 +19,6 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 import os
-import json
 import argparse
 import importlib
 import warnings
@@ -56,9 +55,6 @@ FORECAST_YEARS     = config.FORECAST_YEARS
 EXCEL_DIR      = os.path.join(config.OUTPUT_DIR, "Excel", ACTIVE_CONFIG)
 VIZ_DIR        = os.path.join(config.OUTPUT_DIR, "Visualisierung", ACTIVE_CONFIG)
 
-# Cache lives outside the repo: set FMP_CACHE_DIR, else the project-local default applies.
-CACHE_FOLDER = os.environ.get("FMP_CACHE_DIR", os.path.join(PROJECT_ROOT, "data", "FMP_Cache"))
-
 os.makedirs(EXCEL_DIR, exist_ok=True)
 os.makedirs(VIZ_DIR, exist_ok=True)
 
@@ -78,6 +74,12 @@ except ImportError:
                           effective_tax_rate, g2_sensitivity, rate_multiple,
                           sensitivity_matrix, simulate_dcf, wacc_capm, with_params)
 
+# FMP cache access and field mapping — the only place that knows FMP field names
+try:
+    from .fmp_extract import extract_wacc_inputs, load_json, load_prices
+except ImportError:
+    from fmp_extract import extract_wacc_inputs, load_json, load_prices  # type: ignore[import-not-found,no-redef]
+
 # endregion
 
 
@@ -89,13 +91,6 @@ except ImportError:
 #   income-statement  → Revenue, EBITDA, NetIncome (5 years)
 #   balance-sheet     → Debt, Cash, Equity (current)
 # ─────────────────────────────────────────────────────────────
-
-def load_json(filename):
-    """Load a JSON cache file and return its contents."""
-    path = os.path.join(CACHE_FOLDER, filename)
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
 
 def load_dcf_data():
     """Load all DCF-relevant fields from FMP cache files."""
@@ -194,38 +189,9 @@ for i, d in enumerate(cf_dates):
 
 # ── WACC Calculation via CAPM ─────────────────────────────────
 
-def _load_prices(filename):
-    raw = load_json(filename)
-    df  = pd.DataFrame(raw)
-    df["date"] = pd.to_datetime(df["date"])
-    df  = df.sort_values("date").set_index("date")
-    return df["close"]
-
-
-def extract_wacc_inputs(income_data, total_debt):
-    """
-    Pull the CAPM-relevant figures out of FMP income-statement entries.
-    This is where the FMP field names live — dcf_core only sees plain numbers.
-    Returns (interest_expense of the most recent year with debt service,
-             [(income tax expense, income before tax), ...]).
-    """
-    interest_expense = 0.0
-    for entry in income_data:
-        i_exp = float(entry.get("interestExpense", 0) or 0)
-        if i_exp > 0 and total_debt > 0:
-            interest_expense = i_exp
-            break
-
-    tax_and_ebt = [
-        (float(e.get("incomeTaxExpense", 0) or 0), float(e.get("incomeBeforeTax", 0) or 0))
-        for e in income_data
-    ]
-    return interest_expense, tax_and_ebt
-
-
 def calculate_wacc(prices, market_cap_, total_debt, income_data, risk_free_rate):
     """CAPM-based WACC: Beta (252-day OLS), Ke, Kd after tax, E/V weights."""
-    sp500 = _load_prices("SP500_historical-price-eod_full.json")
+    sp500 = load_prices("SP500_historical-price-eod_full.json")
     beta  = calculate_beta(prices, sp500)
 
     interest_expense, tax_and_ebt = extract_wacc_inputs(income_data, total_debt)
@@ -240,7 +206,7 @@ def calculate_wacc(prices, market_cap_, total_debt, income_data, risk_free_rate)
     )
 
 
-prices_ticker = _load_prices(f"{TICKER}_historical-price-eod_full.json")
+prices_ticker = load_prices(f"{TICKER}_historical-price-eod_full.json")
 inc_raw       = load_json(f"{TICKER}_income-statement.json")[:5]
 
 wacc_res = calculate_wacc(
@@ -696,7 +662,7 @@ except Exception:
 # region Block 6 - Peer Group Comparison
 
 _ALL_TICKERS = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
-_sp500_peer  = _load_prices("SP500_historical-price-eod_full.json")
+_sp500_peer  = load_prices("SP500_historical-price-eod_full.json")
 
 
 def _peer_wacc(mktcap_p, debt_p, prices_p, inc_data_p, rf_p):
@@ -719,7 +685,7 @@ _peer_base_params = {}
 for _tkr in _ALL_TICKERS:
     try:
         _cfg_p     = importlib.import_module(f"Config.{_tkr}")
-        _pr_p      = _load_prices(f"{_tkr}_historical-price-eod_full.json")
+        _pr_p      = load_prices(f"{_tkr}_historical-price-eod_full.json")
         _cf_p      = load_json(f"{_tkr}_cash-flow-statement.json")[:5]
         _inc_p     = load_json(f"{_tkr}_income-statement.json")[:5]
         _bs_p      = load_json(f"{_tkr}_balance-sheet-statement.json")[0]
@@ -1084,7 +1050,7 @@ print(f">>> Multiples Cross-Check: EV/EBITDA {ev_ebitda_mult:.1f}x ({mult_rating
 print("\n=== Legende ===")
 print("dcf_core.py    = Pure calculation module (no I/O) — DCF, CAPM, sensitivity, Monte Carlo")
 print("base_params    = DcfParams for the active ticker: fcf_start, g1, g2, wacc, years, net_debt, shares")
-print("extract_wacc_inputs() = Reads interest expense + tax/EBT pairs out of the FMP income statement")
+print("fmp_extract.py  = Cache access + FMP field mapping (load_json, load_prices, extract_wacc_inputs)")
 print("WACC           = Weighted Average Cost of Capital")
 print("FCF            = Free Cash Flow — operating CF minus capex")
 print("FCF CAGR       = Compound Annual Growth Rate of FCF over 5 years")
