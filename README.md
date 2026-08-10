@@ -283,7 +283,7 @@ DCF/fmp_extract.py      Cache access and FMP field mapping
 
 [GitHub Actions](.github/workflows/ci.yml) runs on every push to `main`:
 
-- **51 tests** (`python -m pytest`) over the calculation modules. Deterministic functions are checked against closed-form results — with zero growth the DCF must collapse to `FCF / WACC`, and enterprise value must not depend on how the cash flows are split between forecast and terminal phase. Stochastic functions are tested on properties instead of fixed values: reproducibility under a fixed seed, correct ordering of the output range, wider dispersion under wider inputs.
+- **85 tests** (`python -m pytest`) over the calculation modules. Deterministic functions are checked against closed-form results — with zero growth the DCF must collapse to `FCF / WACC`, and enterprise value must not depend on how the cash flows are split between forecast and terminal phase. Stochastic functions are tested on properties instead of fixed values: reproducibility under a fixed seed, correct ordering of the output range, wider dispersion under wider inputs. The Monte Carlo tests assert impossibilities rather than values — a loss above 100% of the invested amount, a conditional VaR below its own VaR, a scenario the model could not evaluate counted as a total loss.
 - **mypy** across all three model entry points and their core modules. `mypy.ini` sets `disallow_untyped_defs`, because mypy otherwise skips the bodies of unannotated functions — a green run without that flag says considerably less than it appears to.
 
 Both run in a clean environment on Ubuntu with Python 3.12, so a dependency that happens to be installed locally cannot mask a missing entry in `pyproject.toml`.
