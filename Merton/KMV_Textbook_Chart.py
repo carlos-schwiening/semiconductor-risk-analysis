@@ -320,6 +320,12 @@ def create_textbook_chart(tkr, params):
 # ----------------------------------------------------------------------------
 # region BLOCK 3 - PNG EXPORT
 # ----------------------------------------------------------------------------
+# The README shows INTC's chart. It used to be copied here by hand, and went
+# nearly two months out of date because nothing regenerated it. Written directly
+# now, the same way Monte_Carlo_Sim.py writes its dashboard.
+README_TICKER = "INTC"
+IMAGES_DIR    = os.path.join(PROJECT_ROOT, "images")
+
 saved_files = []
 for tkr in TICKER_LIST:
     print(f"\n  Creating chart: {tkr} ...", end=" ", flush=True)
@@ -329,6 +335,11 @@ for tkr in TICKER_LIST:
     png_path = os.path.join(tkr_output, f"{tkr}_KMV_Textbook.png")
     fig.write_image(png_path, width=1100, height=650, scale=2)
     saved_files.append(png_path)
+    if tkr == README_TICKER:
+        os.makedirs(IMAGES_DIR, exist_ok=True)
+        readme_path = os.path.join(IMAGES_DIR, f"{tkr}_KMV_Textbook.png")
+        fig.write_image(readme_path, width=1100, height=650, scale=2)
+        saved_files.append(readme_path)
     print("saved.")
 
 print(f"\n=== PNG Export ===")

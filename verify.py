@@ -26,6 +26,7 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any, Callable, NamedTuple, cast
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -220,6 +221,38 @@ def _recomputed_dd(ticker: str) -> float:
 # ----------------------------------------------------------------------------
 # region THE CLAIMS
 # ----------------------------------------------------------------------------
+def _readme_images_exist() -> list[str]:
+    """Every image the README links to, that is actually missing."""
+    text = _readme()
+    missing = []
+    for target in re.findall(r"!\[[^\]]*\]\(([^)]+)\)", text):
+        if target.startswith("http"):
+            continue
+        if not os.path.exists(os.path.join(PROJECT_ROOT, target)):
+            missing.append(target)
+    return missing
+
+
+def _images_without_a_producer() -> list[str]:
+    """
+    Images in images/ that no script writes there.
+
+    INTC_KMV_Textbook.png was copied here by hand and went nearly two months out
+    of date, because the script that draws it wrote only to Outputs/. Nothing
+    noticed. An image nobody regenerates is a published figure with no source.
+    """
+    images_dir = os.path.join(PROJECT_ROOT, "images")
+    if not os.path.isdir(images_dir):
+        return []
+    sources = "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in Path(PROJECT_ROOT).rglob("*.py")
+        if ".ipynb_checkpoints" not in path.parts
+    )
+    return sorted(name for name in os.listdir(images_dir)
+                  if name.endswith(".png") and name not in sources)
+
+
 def _rating_claim(ticker: str) -> Callable[[], str]:
     """Bind one ticker into a checkable claim; a bare lambda with a default
     argument leaves mypy nothing to infer the return type from."""
@@ -266,6 +299,20 @@ def build_claims() -> list[Claim]:
             document=README,
             expected=True,
             compute=_dcf_collapses_to_perpetuity,
+        ),
+        Claim(
+            source="Repository itself",
+            claim="every image the README links to exists",
+            document=README,
+            expected=[],
+            compute=_readme_images_exist,
+        ),
+        Claim(
+            source="Repository itself",
+            claim="every image in images/ is written by a script",
+            document="images/",
+            expected=[],
+            compute=_images_without_a_producer,
         ),
     ]
 
