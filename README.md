@@ -294,6 +294,8 @@ Both run in a clean environment on Ubuntu with Python 3.12, so a dependency that
 
 Price history, balance sheet, income statement, cash flow, and key metrics are sourced from the Financial Modeling Prep (FMP) API (`/stable/` endpoints) and cached locally as JSON files before processing. No API key is stored in this repository — the key is read from a local `Config/Api_keys.py` file excluded via `.gitignore`. The S&P 500 price series used for beta estimation is cached as `SP500_historical-price-eod_full.json`.
 
+**[SOURCES.md](SOURCES.md)** documents every source individually — what each one is used for, a link you can open in a browser to check it yourself where one exists, and the limits that actually constrain the results (silent truncation above 5,000 rows, prices that are not dividend-adjusted, sector averages that are a plausibility yardstick rather than a correction).
+
 ---
 
 ## Author
