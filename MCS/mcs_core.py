@@ -1,19 +1,14 @@
 """
 mcs_core — Pure calculation for the Monte Carlo risk model.
 
-Extracted from Monte_Carlo_Sim.py, which runs its whole analysis at import time
-and therefore cannot be unit tested at all. Everything here takes numbers and
-returns numbers: no file access, no configuration, no plotting.
+Numbers in, numbers out: no file access, no configuration, no plotting. Split
+out of Monte_Carlo_Sim.py, which runs its whole analysis at import and so could
+not be unit tested at all.
 
-The module exists for one reason above the others. The conversion from a
-simulated value per share to a loss appeared inline at five places in the script,
-each with its own copy of the same three lines. When the floor was corrected from
--2.0 to 0.0 — a stock cannot lose more than everything, so a loss above 100% is
-impossible — one of the five was missed, and the tornado analysis kept reporting
-a base case that disagreed with the headline figure by ten percentage points.
-Nothing caught it; the two numbers simply sat in different blocks of output.
-
-One function, called five times, cannot drift apart from itself.
+Why it exists: the value-to-loss conversion sat inline at five places, each its
+own copy. Correcting the floor to 0.0 missed one, and the tornado base case
+disagreed with the headline figure by ten points. One function, called five
+times, cannot drift from itself.
 """
 
 from typing import NamedTuple, Optional, TypedDict
@@ -21,13 +16,10 @@ from typing import NamedTuple, Optional, TypedDict
 import numpy as np
 from scipy.stats import norm
 
-# Bounds on the ratio of simulated value per share to market price.
-#
-# The floor is the economically binding one: shareholders have limited liability,
-# so the value of a share cannot fall below zero and a loss cannot exceed 100%.
-# The cap is a modelling convention — a simulation that produces a six-fold value
-# is telling you the input distribution has a fat tail, not that the company is
-# worth that much, and letting it through would dominate the portfolio average.
+# Bounds on simulated value per share over market price.
+# Floor: limited liability - a share cannot be worth less than nothing, so a
+# loss cannot exceed 100%. Cap: a six-fold outcome says the input distribution
+# has a fat tail, and uncapped it would dominate the portfolio average.
 REL_FLOOR = 0.0
 REL_CAP = 5.0
 
@@ -76,12 +68,10 @@ def relative_value(
     cap: float = REL_CAP,
 ) -> np.ndarray:
     """
-    Simulated value per share as a multiple of the market price, bounded.
+    Simulated value per share over market price, bounded.
 
-    A simulation that produced no usable value (NaN, or a price of zero) is set
-    to 1.0 rather than dropped: it means the model could not say anything about
-    that scenario, and treating "no information" as "total loss" would invent a
-    default that the model never predicted.
+    NaN or a zero price becomes 1.0, not 0.0: the model had nothing to say about
+    that scenario, and scoring "no information" as a wipeout invents a default.
     """
     unusable = np.isnan(value_per_share) | (price == 0)
     # np.where evaluates both branches, so dividing by the raw price would still
@@ -95,22 +85,18 @@ def relative_value(
 
 def loss_percent(relative: np.ndarray) -> np.ndarray:
     """
-    Loss in percent of the starting value, from a bounded relative value.
-
-    With `relative` floored at zero this can never exceed 100. That is not a
-    coincidence to be rediscovered later but the reason the floor exists, so the
-    tests assert it directly.
+    Loss in percent of starting value. Cannot exceed 100 while `relative` is
+    floored at zero — which is the point of the floor, and asserted in the tests.
     """
     return 100.0 - relative * 100.0
 
 
 def risk_measures(losses: np.ndarray) -> RiskMeasures:
     """
-    VaR at 95% and 99%, and the conditional VaR beyond the 99% point.
+    VaR 95, VaR 99, and CVaR beyond the 99% point.
 
-    CVaR is the mean of the losses at or above VaR 99 and is therefore always at
-    least as large as VaR 99 — a useful invariant, because a CVaR below its VaR
-    means the tail was taken from the wrong side of the distribution.
+    CVaR averages the losses at or above VaR 99, so it can never come out lower.
+    A CVaR below its VaR means the tail was taken from the wrong side.
     """
     var_95 = float(np.percentile(losses, 95))
     var_99 = float(np.percentile(losses, 99))
@@ -121,11 +107,8 @@ def risk_measures(losses: np.ndarray) -> RiskMeasures:
 
 def diversification_benefit(portfolio_std: float, average_single_std: float) -> float:
     """
-    How much of the average single-name volatility the portfolio removes.
-
-    Zero when the names move together, approaching one as they offset. Returns
-    0.0 for an average of zero rather than dividing — a portfolio of constants
-    has no benefit to measure.
+    Share of average single-name volatility the portfolio removes. Zero when the
+    names move together, approaching one as they offset.
     """
     if average_single_std <= 0:
         return 0.0
@@ -144,10 +127,9 @@ def vasicek_conditional_pd(
     """
     Default probability conditional on the systematic factor.
 
-    Single-factor model: a borrower's asset value is sqrt(rho)*Z + sqrt(1-rho)*e,
-    and default occurs below the threshold implied by the unconditional PD. Under
-    a bad draw of Z every borrower becomes more likely to default at once, which
-    is what makes the portfolio loss distribution skewed rather than binomial.
+    Single-factor: asset value is sqrt(rho)*Z + sqrt(1-rho)*e. A bad draw of Z
+    raises every borrower's risk at once — which is what skews the portfolio
+    loss distribution rather than leaving it binomial.
     """
     threshold = norm.ppf(unconditional_pd)
     conditional: np.ndarray = norm.cdf(
@@ -175,9 +157,8 @@ def sample_distribution(
     """
     Draw n independent samples from the configured distribution for `name`.
 
-    Uses the legacy global np.random seed rather than a Generator: the published
-    figures were produced with it, and switching would change every number in the
-    README without changing the model.
+    Legacy global np.random seed, not a Generator: the published figures were
+    produced with it, and switching would change every number in the README.
     """
     if seed is not None:
         np.random.seed(seed)
@@ -212,9 +193,8 @@ def apply_distribution(name: str, mu: float, z_arr: np.ndarray) -> np.ndarray:
     """
     Map standard normal draws onto the target distribution, keeping their ranks.
 
-    This is the Gaussian copula step: correlation is generated once among normal
-    variables, then each margin is transformed separately. Drawing each parameter
-    from its own distribution directly would lose the correlation between them.
+    The Gaussian copula step. Drawing each parameter from its own distribution
+    directly would lose the correlation between them.
     """
     dist = DISTRIBUTIONS[name]
     dtype = dist["type"]
@@ -262,9 +242,8 @@ def dcf_array(
     """
     Two-phase DCF over whole simulation arrays; equity value per share.
 
-    Scenarios where the discount rate does not exceed the terminal growth rate
-    return NaN. The Gordon formula divides by (wacc - g2) and would otherwise
-    produce a negative or explosive terminal value that looks like a result.
+    Returns NaN where wacc <= g2: the Gordon formula divides by (wacc - g2) and
+    would otherwise produce an explosive terminal value that looks like a result.
     """
     valid = wacc_arr > g2_arr
     fcf_t = np.where(fcf_start_arr > -1e13, fcf_start_arr, 0.0)

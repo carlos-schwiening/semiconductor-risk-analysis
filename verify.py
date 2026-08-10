@@ -2,30 +2,20 @@
 verify — Recompute the published figures and report where they no longer hold.
 Run with: python verify.py [--full]
 
-A number typed into a README has no connection to the code that produced it. It
-goes stale silently, and usually does: this repository's README claimed 51 tests
-for months after the suite had grown to 85, and nothing noticed, because nothing
-was checking.
+A number in a README has no link to the code that made it. This README claimed
+51 tests for months after the suite had grown to 85.
 
-This script recomputes what can be recomputed and compares. A mismatch is a
-FINDING, not an annoyance — either the source changed or the code did, and which
-one it is has to be established before either number is corrected. Never edit
-the document to match the new value without knowing why it moved.
+A mismatch is a FINDING: either the source moved or the code did. Establish
+which before correcting either.
 
-Three tiers, and the distinction is the honest part:
+  cheap      Constants, config, structural facts. No cache, no network.
+  --full     Re-runs the models over the cached FMP data. Needs FMP_CACHE_DIR.
+  by hand    Outside publications (S&P, Damodaran). Printed every run so they
+             are not assumed current.
 
-  cheap      Constants, configuration and structural facts. No cache, no
-             network. These are what drift when code changes.
-  --full     Re-runs the models over the cached FMP data and compares the
-             headline table. Needs FMP_CACHE_DIR to be set.
-  by hand    Figures from outside publications (S&P observed default rates,
-             Damodaran sector references). Code cannot recompute these; they
-             are listed at the end so they are not silently assumed current.
-
-The README carries roughly 290 numeric figures, most of them cells in the three
-models' result tables. This does not check all of them one by one — they are
-outputs of the same model runs, so re-running the models is the check. What it
-does cover is every figure that can drift on its own.
+The README has ~290 figures, mostly cells in the three result tables. Those are
+outputs of the same runs, so re-running the models is their check. Declared here
+is every figure that can drift on its own.
 """
 
 # ----------------------------------------------------------------------------
@@ -215,11 +205,8 @@ def _recomputed_merton(ticker: str) -> dict[str, Any]:
     equity = float(metrics.get("marketCap", 0) or 0)
     debt = float(balance.get("totalDebt", 0) or 0)
 
-    # Named arguments on purpose. Written positionally the first time, this call
-    # passed volatility where the rate belongs and the rate where the maturity
-    # belongs — the signature is (E, D, r, T, sigma_e). It failed only because
-    # the result key was also wrong; with the right key it would have returned a
-    # plausible, wrong Distance to Default and reported the README as verified.
+    # Named on purpose: the signature is (E, D, r, T, sigma_e), and written
+    # positionally this passed volatility where the rate belongs.
     result = merton_model(E=equity, D=debt, r=config.RISK_FREE_RATE,
                           T=config.MATURITY, sigma_e=sigma_e)
     return {"dd": round(float(result["dd"]), 2)}

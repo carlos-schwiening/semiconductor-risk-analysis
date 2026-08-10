@@ -2,16 +2,12 @@
 test_mcs_core — Unit tests for MCS/mcs_core.py.
 Run with: python -m pytest tests/test_mcs_core.py
 
-Most of these test invariants rather than values. The two defects this module was
-extracted for were not wrong arithmetic — every line computed exactly what it
-said — but results that no arithmetic check would question: a loss above 100% of
-the invested amount, and a base case that disagreed with the headline figure
-because one of five copies of the same three lines had not been corrected.
+These assert invariants, not values. Neither defect this module was extracted
+for was wrong arithmetic — every line computed what it said. They were results
+no arithmetic check would question: a loss above 100%, and a base case that
+disagreed with the headline figure.
 
-So the assertions here are of the form "this can never happen", not "this equals
-that". A stock cannot lose more than everything; a conditional VaR cannot fall
-below its VaR; a scenario the model could not evaluate must not be recorded as a
-total loss.
+So: "this can never happen", not "this equals that".
 """
 
 import os
