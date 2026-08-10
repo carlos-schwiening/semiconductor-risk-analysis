@@ -9,7 +9,9 @@ Run with: python Merton/GBM_Paths_Export.py
   Block 3: Excel Export -> C:\\Python\\Projects\\Public\\semiconductor-risk-analysis\\Outputs\\Excel\\GBM_Paths.xlsx
 """
 
-# region Block 0 - Imports & Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 0 - IMPORTS & SETUP
+# ----------------------------------------------------------------------------
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -50,7 +52,9 @@ print(f"{'='*60}")
 # endregion
 
 
-# region Block 1 - Helper Functions & Merton Calculation
+# ----------------------------------------------------------------------------
+# region BLOCK 1 - HELPER FUNCTIONS & MERTON CALCULATION
+# ----------------------------------------------------------------------------
 def load_json(filename):
     """Load a JSON cache file from CACHE_FOLDER."""
     with open(os.path.join(CACHE_FOLDER, filename), "r", encoding="utf-8") as f:
@@ -108,7 +112,9 @@ for tkr in TICKER_LIST:
 # endregion
 
 
-# region Block 2 - GBM Path Simulation
+# ----------------------------------------------------------------------------
+# region BLOCK 2 - GBM PATH SIMULATION
+# ----------------------------------------------------------------------------
 # GBM closed-form incremental discretisation:
 #   A_{t+1} = A_t * exp((mu - 0.5*sigma_V^2)*dt + sigma_V*sqrt(dt)*Z)
 # Equivalent cumulative form:
@@ -163,7 +169,9 @@ print(f"\nTotal shape: {df_gbm.shape}")
 # endregion
 
 
-# region Block 3 - Excel Export
+# ----------------------------------------------------------------------------
+# region BLOCK 3 - EXCEL EXPORT
+# ----------------------------------------------------------------------------
 xlsx_path = os.path.join(OUTPUT_DIR, "GBM_Paths.xlsx")
 with pd.ExcelWriter(xlsx_path, engine="openpyxl") as writer:
     df_gbm.to_excel(writer, sheet_name="GBM_Paths", index=False)
@@ -177,7 +185,9 @@ print(df_gbm.head(10).to_string(index=False))
 # endregion
 
 
-# region Interpretation
+# ----------------------------------------------------------------------------
+# region INTERPRETATION
+# ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
 for tkr in TICKER_LIST:
     p = ticker_params[tkr]
@@ -196,7 +206,9 @@ print(f">>> Excel file ready: {len(df_gbm):,} rows, columns: "
 # endregion
 
 
-# region Legende
+# ----------------------------------------------------------------------------
+# region LEGENDE
+# ----------------------------------------------------------------------------
 print("\n=== Legende ===")
 print("V0            = Merton asset value at the valuation date (in Bn USD)")
 print("D             = Default point = Total Debt (in Bn USD)")

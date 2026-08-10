@@ -9,7 +9,9 @@ Run with: python Merton/DD_TimeSeries_Chart.py
   Block 3: PNG Export
 """
 
-# region Block 0 - Imports & Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 0 - IMPORTS & SETUP
+# ----------------------------------------------------------------------------
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -48,7 +50,9 @@ print(f"{'='*60}")
 # endregion
 
 
-# region Block 1 - Load Data
+# ----------------------------------------------------------------------------
+# region BLOCK 1 - LOAD DATA
+# ----------------------------------------------------------------------------
 print("\nLoading DD_TimeSeries_All from Merton_Summary.xlsx ...")
 
 _xlsx_files = glob.glob(os.path.join(REPORTS_BASE, "Merton_Summary.xlsx"))
@@ -68,7 +72,9 @@ print(f"  Period: {df['Date'].min().date()} — {df['Date'].max().date()}")
 # endregion
 
 
-# region Block 2 - Create Chart
+# ----------------------------------------------------------------------------
+# region BLOCK 2 - CREATE CHART
+# ----------------------------------------------------------------------------
 print("\nCreating DD time series chart ...")
 
 fig = go.Figure()
@@ -129,7 +135,9 @@ fig.add_annotation(
 # endregion
 
 
-# region Block 3 - PNG Export
+# ----------------------------------------------------------------------------
+# region BLOCK 3 - PNG EXPORT
+# ----------------------------------------------------------------------------
 output_path = os.path.join(IMAGES_DIR, "DD_TimeSeries.png")
 fig.write_image(output_path, width=WIDTH, height=HEIGHT, scale=SCALE)
 
@@ -139,7 +147,9 @@ print(f"Dimensions:      {WIDTH} x {HEIGHT} px @ {SCALE}x  ({size_kb} KB)")
 # endregion
 
 
-# region Interpretation
+# ----------------------------------------------------------------------------
+# region INTERPRETATION
+# ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
 latest = df.groupby("Ticker")["DD"].last()
 for tkr in TICKER_LIST:
@@ -154,7 +164,9 @@ for tkr in TICKER_LIST:
 # endregion
 
 
-# region Legende
+# ----------------------------------------------------------------------------
+# region LEGENDE
+# ----------------------------------------------------------------------------
 print("\n=== Legende ===")
 print("DD              = Distance to Default (standard deviations to the default point)")
 print("Date            = Quarterly reference date from the Merton time series")

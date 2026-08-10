@@ -13,7 +13,9 @@ if MERTON_DIR not in sys.path:
 from merton_core import merton_model, get_rating_info, calculate_spread
 
 
-# region merton_model
+# ----------------------------------------------------------------------------
+# region MERTON_MODEL
+# ----------------------------------------------------------------------------
 def test_merton_model_pd_between_zero_and_one():
     """PD is a probability — must always be in [0, 1], regardless of input."""
     for E, D, sigma_e in [(100, 20, 0.25), (100, 95, 0.60), (50, 80, 0.90)]:
@@ -43,7 +45,9 @@ def test_merton_model_near_zero_debt_edge_case():
 # endregion
 
 
-# region get_rating_info
+# ----------------------------------------------------------------------------
+# region GET_RATING_INFO
+# ----------------------------------------------------------------------------
 def test_get_rating_info_maps_high_dd_to_best_rating():
     rating, bps_lo, bps_hi = get_rating_info(dd=8.6)
     assert rating == "AAA/AA"
@@ -56,7 +60,9 @@ def test_get_rating_info_maps_low_dd_to_worst_rating():
 # endregion
 
 
-# region calculate_spread
+# ----------------------------------------------------------------------------
+# region CALCULATE_SPREAD
+# ----------------------------------------------------------------------------
 def test_calculate_spread_zero_pd_gives_zero_spread():
     assert calculate_spread(pd_val=0.0, T=1) == 0.0
 

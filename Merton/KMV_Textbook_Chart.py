@@ -9,7 +9,9 @@ Run with: python Merton/KMV_Textbook_Chart.py
   Block 3: PNG Export
 """
 
-# region Block 0 - Imports & Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 0 - IMPORTS & SETUP
+# ----------------------------------------------------------------------------
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -53,7 +55,9 @@ print(f"{'='*60}")
 # endregion
 
 
-# region Block 1 - Helper Functions & Merton Calculation
+# ----------------------------------------------------------------------------
+# region BLOCK 1 - HELPER FUNCTIONS & MERTON CALCULATION
+# ----------------------------------------------------------------------------
 def load_json(filename):
     with open(os.path.join(CACHE_FOLDER, filename), "r", encoding="utf-8") as f:
         return json.load(f)
@@ -87,7 +91,9 @@ for tkr in TICKER_LIST:
 # endregion
 
 
-# region Block 2 - GBM Simulation & Chart Creation
+# ----------------------------------------------------------------------------
+# region BLOCK 2 - GBM SIMULATION & CHART CREATION
+# ----------------------------------------------------------------------------
 def create_textbook_chart(tkr, params):
     """Build KMV textbook chart for one ticker. Returns fig."""
     V0     = params["V0"]
@@ -311,7 +317,9 @@ def create_textbook_chart(tkr, params):
 # endregion
 
 
-# region Block 3 - PNG Export
+# ----------------------------------------------------------------------------
+# region BLOCK 3 - PNG EXPORT
+# ----------------------------------------------------------------------------
 saved_files = []
 for tkr in TICKER_LIST:
     print(f"\n  Creating chart: {tkr} ...", end=" ", flush=True)
@@ -331,7 +339,9 @@ print(f"\nFolder: {OUTPUT_DIR}")
 # endregion
 
 
-# region Interpretation
+# ----------------------------------------------------------------------------
+# region INTERPRETATION
+# ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
 for tkr in TICKER_LIST:
     p = ticker_params[tkr]
@@ -349,7 +359,9 @@ print(f">>> Lowest risk:     {safest} (DD={ticker_params[safest]['dd']:.3f}sigma
 # endregion
 
 
-# region Legende
+# ----------------------------------------------------------------------------
+# region LEGENDE
+# ----------------------------------------------------------------------------
 print("\n=== Legende ===")
 print("V0          = Merton asset value (iterated from equity market cap, in Bn USD)")
 print("D           = Default point = Total Debt (in Bn USD, constant = horizontal line)")

@@ -8,7 +8,9 @@ Run with: python Merton/Merton_Report.py
   Block 2: Generate HTML Report
 """
 
-# region Block 0 - Imports & Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 0 - IMPORTS & SETUP
+# ----------------------------------------------------------------------------
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -53,7 +55,9 @@ except ImportError:  # running directly as a script (python Merton/Merton_Report
 # endregion
 
 
-# region Block 1 - Collect Data (all 5 tickers)
+# ----------------------------------------------------------------------------
+# region BLOCK 1 - COLLECT DATA (ALL 5 TICKERS)
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Loads for each ticker: Merton base values, historical DD,
 # stress test, sensitivity (σ_E ±30%), credit spread.
@@ -178,7 +182,9 @@ print(f"\n{len(results)}/5 tickers loaded.")
 # endregion
 
 
-# region Block 2 - Generate HTML Report
+# ----------------------------------------------------------------------------
+# region BLOCK 2 - GENERATE HTML REPORT
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Builds a complete HTML report with 5 sections:
 #   1. Risk overview table (sorted by DD ascending)
@@ -515,7 +521,9 @@ print(f"Report opened: {html_path}")
 # endregion
 
 
-# region Interpretation
+# ----------------------------------------------------------------------------
+# region INTERPRETATION
+# ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
 
 if results:
@@ -545,7 +553,9 @@ if results:
 # endregion
 
 
-# region Legende
+# ----------------------------------------------------------------------------
+# region LEGENDE
+# ----------------------------------------------------------------------------
 print("\n=== Legende ===")
 print("TICKER_LIST      = List of all analyzed companies (5 tickers)")
 print("DD               = Distance to Default — standard deviations to default")

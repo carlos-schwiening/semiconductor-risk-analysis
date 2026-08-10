@@ -13,7 +13,9 @@ Run with: python Merton/Merton_Dashboard_Chart.py
   Block 3: PNG Export
 """
 
-# region Block 0 - Imports & Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 0 - IMPORTS & SETUP
+# ----------------------------------------------------------------------------
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -52,7 +54,9 @@ print(f"{'='*60}")
 # endregion
 
 
-# region Block 1 - Load Data
+# ----------------------------------------------------------------------------
+# region BLOCK 1 - LOAD DATA
+# ----------------------------------------------------------------------------
 print("\nLoading data from Merton_Summary.xlsx ...")
 
 _xlsx_files = glob.glob(os.path.join(EXCEL_DIR, "Merton_Summary.xlsx"))
@@ -76,7 +80,9 @@ print(f"  Rating_Migration:   {df_migration.shape}")
 # endregion
 
 
-# region Block 2 - 2x2 Subplot Chart
+# ----------------------------------------------------------------------------
+# region BLOCK 2 - 2X2 SUBPLOT CHART
+# ----------------------------------------------------------------------------
 print("\nCreating 2x2 dashboard chart ...")
 
 fig = make_subplots(
@@ -201,7 +207,9 @@ for _, row_data in df_summary.iterrows():
 # endregion
 
 
-# region Block 3 - Layout & PNG Export
+# ----------------------------------------------------------------------------
+# region BLOCK 3 - LAYOUT & PNG EXPORT
+# ----------------------------------------------------------------------------
 fig.update_layout(**LAYOUT)
 fig.update_layout(
     title=dict(
@@ -284,7 +292,9 @@ print(f"Dimensions:       {CHART_WIDTH} x {CHART_HEIGHT} px @ {CHART_SCALE}x")
 # endregion
 
 
-# region Interpretation
+# ----------------------------------------------------------------------------
+# region INTERPRETATION
+# ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
 _best  = df_summary.loc[df_summary["DD"].idxmax()]
 _worst = df_summary.loc[df_summary["DD"].idxmin()]
@@ -308,7 +318,9 @@ print(f">>> Dashboard saved: {png_path}")
 # endregion
 
 
-# region Legende
+# ----------------------------------------------------------------------------
+# region LEGENDE
+# ----------------------------------------------------------------------------
 print("\n=== Legende ===")
 print("DD             = Distance to Default from the Merton model (number of standard deviations to default)")
 print("PD             = Probability of Default = N(-DD)")

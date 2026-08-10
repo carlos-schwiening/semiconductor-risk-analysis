@@ -5,18 +5,24 @@ Microchip Technology - Configuration for DCF_Merton_MC
 
 import os
 
+# ----------------------------------------------------------------------------
 # region COMPANY
+# ----------------------------------------------------------------------------
 COMPANY           = "Microchip Technology"
 TICKER            = "MCHP"
 RATING            = "BB+"
 # endregion
 
+# ----------------------------------------------------------------------------
 # region MERTON PARAMETERS
+# ----------------------------------------------------------------------------
 RISK_FREE_RATE    = 0.043    # Risk-free rate
 MATURITY          = 1        # Years
 # endregion
 
+# ----------------------------------------------------------------------------
 # region DCF PARAMETERS
+# ----------------------------------------------------------------------------
 WACC_MEAN         = 0.10
 WACC_STD          = 0.015
 GROWTH_MEAN       = 0.05
@@ -25,11 +31,15 @@ TERMINAL_GROWTH   = 0.025
 FORECAST_YEARS    = 5
 # endregion
 
+# ----------------------------------------------------------------------------
 # region MONTE CARLO
+# ----------------------------------------------------------------------------
 SIMULATIONS      = 10000
 # endregion
 
+# ----------------------------------------------------------------------------
 # region OUTPUT
+# ----------------------------------------------------------------------------
 PROJECT_ROOT      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 OUTPUT_DIR        = os.path.join(PROJECT_ROOT, "Outputs")
 # endregion

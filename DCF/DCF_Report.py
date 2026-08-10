@@ -9,7 +9,9 @@ Run with: python DCF/DCF_Report.py [--ticker MCHP]
   Block 3: Generate and Open HTML Report
 """
 
-# region Block 0 - Imports & Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 0 - IMPORTS & SETUP
+# ----------------------------------------------------------------------------
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -76,7 +78,9 @@ except ImportError:
 # endregion
 
 
-# region Block 1 - All Calculations
+# ----------------------------------------------------------------------------
+# region BLOCK 1 - ALL CALCULATIONS
+# ----------------------------------------------------------------------------
 
 
 print(f"Calculating DCF Report — {TICKER} ({COMPANY}) ...")
@@ -201,7 +205,9 @@ print("  Calculations complete.")
 # endregion
 
 
-# region Block 2 - Create Charts
+# ----------------------------------------------------------------------------
+# region BLOCK 2 - CREATE CHARTS
+# ----------------------------------------------------------------------------
 
 _CONF   = dict(displayModeBar=True, displaylogo=False,
                modeBarButtonsToRemove=["lasso2d", "select2d"])
@@ -405,7 +411,9 @@ print("  Chart 4 (Monte Carlo) ready.")
 # endregion
 
 
-# region Block 3 - Generate HTML Report
+# ----------------------------------------------------------------------------
+# region BLOCK 3 - GENERATE HTML REPORT
+# ----------------------------------------------------------------------------
 
 _CSS = """
     *, *::before, *::after { box-sizing: border-box; }
@@ -710,7 +718,9 @@ print(f"DCF Report opened: {html_path}")
 # endregion
 
 
-# region Interpretation
+# ----------------------------------------------------------------------------
+# region INTERPRETATION
+# ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
 print(f">>> {TICKER}: Intrinsic value {equity_per_share:.2f} USD vs. price {current_price:.2f} USD — {valuation} ({upside:+.1f}%).")
 if p_undervalued < 0.15:
@@ -725,7 +735,9 @@ if fair_combos:
 # endregion
 
 
-# region Legende
+# ----------------------------------------------------------------------------
+# region LEGENDE
+# ----------------------------------------------------------------------------
 print("\n=== Legende ===")
 print("ACTIVE_CONFIG    = Ticker code for Config import (set via --ticker, default MCHP)")
 print("chart1..4_html   = Plotly charts as HTML snippets (no standalone Plotly JS)")

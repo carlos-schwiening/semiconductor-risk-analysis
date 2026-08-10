@@ -19,7 +19,9 @@ Select the active company via --ticker (default: MCHP | INTC | ON | QCOM | MPWR)
   Block 12: Excel Export (Portfolio / Dashboard feed)
 """
 
-# region Block 0 - Imports & Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 0 - IMPORTS & SETUP
+# ----------------------------------------------------------------------------
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -89,7 +91,9 @@ class MarketData(TypedDict):
 # endregion
 
 
-# region Block 1 - Load Data from FMP Cache
+# ----------------------------------------------------------------------------
+# region BLOCK 1 - LOAD DATA FROM FMP CACHE
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Loads price data, balance sheet, and key metrics from the local JSON cache.
 # ─────────────────────────────────────────────────────────────
@@ -152,7 +156,9 @@ print(f"{'='*60}")
 # endregion
 
 
-# region Block 2 - Merton Model
+# ----------------------------------------------------------------------------
+# region BLOCK 2 - MERTON MODEL
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # The Merton (1974) model treats equity as a call option
 # on the firm's asset value V with strike = debt D.
@@ -184,7 +190,9 @@ print(f"Expected Loss (LGD=45%):   {merton['el'] / 1e6:.1f} Mn USD")
 # endregion
 
 
-# region Block 3 - Historical DD Time Series
+# ----------------------------------------------------------------------------
+# region BLOCK 3 - HISTORICAL DD TIME SERIES
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Computes DD on a rolling basis over 5 years, sampling every 63 trading
 # days (~1 quarter). Market cap = price × estimated share count.
@@ -309,7 +317,9 @@ create_dd_time_series_chart(df_dd_hist, VIZ_DIR)
 # endregion
 
 
-# region Block 4 - Sensitivity Analysis + Tornado Chart
+# ----------------------------------------------------------------------------
+# region BLOCK 4 - SENSITIVITY ANALYSIS + TORNADO CHART
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Varies D, E, sigma_E individually from -30% to +30% in 10% steps.
 # All other inputs held constant at base values.
@@ -428,7 +438,9 @@ create_tornado_chart(sens_summary, dd_base_val, VIZ_DIR)
 # endregion
 
 
-# region Block 5 - Stress Test Bear/Base/Bull
+# ----------------------------------------------------------------------------
+# region BLOCK 5 - STRESS TEST BEAR/BASE/BULL
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Three scenarios vary E, D, and sigma_E simultaneously:
 #   Bear: market crash — price −40%, vol +50%, debt +10%
@@ -554,7 +566,9 @@ df_stress = pd.DataFrame([
 # endregion
 
 
-# region Block 6 - Credit Spread Derivation
+# ----------------------------------------------------------------------------
+# region BLOCK 6 - CREDIT SPREAD DERIVATION
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Theoretical spread from Merton PD and LGD=45%:
 #   s = -ln(1 − PD · LGD) / T  →  in basis points × 10000
@@ -667,7 +681,9 @@ create_spread_chart(df_credit, VIZ_DIR)
 # endregion
 
 
-# region Block 7 - Visualization
+# ----------------------------------------------------------------------------
+# region BLOCK 7 - VISUALIZATION
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Plotly chart with two panels:
 #   Panel 1: Historical stock price (last 2 years)
@@ -754,7 +770,9 @@ create_merton_chart(prices, log_returns, merton, VIZ_DIR)
 # endregion
 
 
-# region Block 8 - Export
+# ----------------------------------------------------------------------------
+# region BLOCK 8 - EXPORT
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Excel export with two sheets:
 #   Sheet 1: Merton_Ergebnisse — all calculated values + parameters
@@ -834,7 +852,9 @@ print(f"{'='*60}\n")
 # endregion
 
 
-# region Block 9 - IFRS 9 ECL Integration
+# ----------------------------------------------------------------------------
+# region BLOCK 9 - IFRS 9 ECL INTEGRATION
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Expected Credit Loss per IFRS 9:
 #   Stage 1 (12M ECL):      PD_12M      * LGD * EAD
@@ -884,7 +904,9 @@ print(f"{'ECL (current stage, Mn)':<30} {ecl_used/1e6:>14.3f}")
 # endregion
 
 
-# region Block 10 - Rating Migration Matrix
+# ----------------------------------------------------------------------------
+# region BLOCK 10 - RATING MIGRATION MATRIX
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Derives rating per quarter from the historical DD time series.
 # Counts transitions between ratings and shows
@@ -964,7 +986,9 @@ create_migration_heatmap(migration_probs, VIZ_DIR)
 # endregion
 
 
-# region Block 11 - LGD Sensitivity
+# ----------------------------------------------------------------------------
+# region BLOCK 11 - LGD SENSITIVITY
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Varies LGD 10%–90%, computes EL, spread, ECL_12M
 # for Bear/Base/Bull scenarios. Line chart + table.
@@ -1045,7 +1069,9 @@ create_lgd_chart(df_lgd, VIZ_DIR)
 # endregion
 
 
-# region Block 12 - Excel Export (Portfolio / Dashboard feed)
+# ----------------------------------------------------------------------------
+# region BLOCK 12 - EXCEL EXPORT (PORTFOLIO / DASHBOARD FEED)
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # All cross-ticker and dashboard datasets in one .xlsx workbook
 # (one sheet each), saved to the shared Reports folder.
@@ -1192,7 +1218,9 @@ print(f"  DD_Pivot          — {len(df_dd_pivot)} rows (pivot)")
 # endregion
 
 
-# region Interpretation
+# ----------------------------------------------------------------------------
+# region INTERPRETATION
+# ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
 
 _dd  = merton['dd']
@@ -1241,7 +1269,9 @@ print(f">>> Dominant historical rating (5Y quarters): {dominant_rating} "
 # endregion
 
 
-# region Legende
+# ----------------------------------------------------------------------------
+# region LEGENDE
+# ----------------------------------------------------------------------------
 print("\n=== Legende ===")
 print("E              = Market capitalization (Equity Market Value)")
 print("D              = Total debt (Total Debt)")

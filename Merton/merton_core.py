@@ -6,7 +6,9 @@ No I/O, no side effects — safe to import for tests or from any script.
 import numpy as np
 from scipy.stats import norm
 
-# region Merton Model
+# ----------------------------------------------------------------------------
+# region MERTON MODEL
+# ----------------------------------------------------------------------------
 def merton_model(
     E: float, D: float, r: float, T: float, sigma_e: float,
     max_iter: int = 1000, tol: float = 1e-6,
@@ -51,7 +53,9 @@ def merton_model(
 # endregion
 
 
-# region Rating & Credit Spread
+# ----------------------------------------------------------------------------
+# region RATING & CREDIT SPREAD
+# ----------------------------------------------------------------------------
 RATING_TABLE: list[tuple[str, float, float, int, int]] = [
     ("AAA/AA",  8.0,  float("inf"),  30,   50),
     ("A",       6.0,  8.0,           60,   90),

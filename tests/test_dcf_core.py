@@ -30,7 +30,9 @@ def params(**overrides):
     return base
 
 
-# region dcf_full
+# ----------------------------------------------------------------------------
+# region DCF_FULL
+# ----------------------------------------------------------------------------
 def test_dcf_full_zero_growth_equals_perpetuity():
     """With g1 = g2 = 0 the whole model must collapse to FCF / WACC."""
     result = dcf_full(params(fcf_start=100.0, g1=0.0, g2=0.0, wacc=0.10, years=5))
@@ -76,7 +78,9 @@ def test_dcf_full_zero_shares_gives_nan_per_share_not_crash():
 # endregion
 
 
-# region dcf_schedule
+# ----------------------------------------------------------------------------
+# region DCF_SCHEDULE
+# ----------------------------------------------------------------------------
 def test_dcf_schedule_has_one_row_per_forecast_year():
     schedule, _ = dcf_schedule(params(years=7))
     assert len(schedule) == 7
@@ -104,7 +108,9 @@ def test_dcf_schedule_discounting_shrinks_later_years():
 # endregion
 
 
-# region with_params
+# ----------------------------------------------------------------------------
+# region WITH_PARAMS
+# ----------------------------------------------------------------------------
 def test_with_params_does_not_mutate_the_original():
     original = params()
     modified = with_params(original, wacc=0.20)
@@ -119,7 +125,9 @@ def test_with_params_keeps_untouched_fields():
 # endregion
 
 
+# ----------------------------------------------------------------------------
 # region CAPM / WACC
+# ----------------------------------------------------------------------------
 def _price_series(returns):
     idx = pd.date_range("2020-01-01", periods=len(returns) + 1, freq="D")
     return pd.Series(100.0 * np.exp(np.concatenate([[0.0], np.cumsum(returns)])), index=idx)
@@ -195,7 +203,9 @@ def test_wacc_capm_without_capital_base_falls_back_to_ke():
 # endregion
 
 
-# region Sensitivity
+# ----------------------------------------------------------------------------
+# region SENSITIVITY
+# ----------------------------------------------------------------------------
 def test_sensitivity_matrix_has_wacc_rows_and_growth_columns():
     matrix = sensitivity_matrix(params(), [0.08, 0.10, 0.12], [0.02, 0.04, 0.06, 0.08])
     assert len(matrix) == 3
@@ -229,7 +239,9 @@ def test_g2_sensitivity_value_rises_with_terminal_growth():
 # endregion
 
 
-# region Monte Carlo
+# ----------------------------------------------------------------------------
+# region MONTE CARLO
+# ----------------------------------------------------------------------------
 def test_simulate_dcf_is_reproducible_for_a_fixed_seed():
     kwargs = dict(n=500, wacc_std=0.015, growth_std=0.02, fcf_std_factor=0.15)
     first = simulate_dcf(params(), seed=42, **kwargs)
@@ -275,7 +287,9 @@ def test_simulate_dcf_survives_negative_starting_fcf():
 # endregion
 
 
-# region Classification & Multiples
+# ----------------------------------------------------------------------------
+# region CLASSIFICATION & MULTIPLES
+# ----------------------------------------------------------------------------
 def test_cagr_known_doubling():
     assert cagr(newest=200.0, oldest=100.0, periods=4) == pytest.approx(2 ** 0.25 - 1)
 

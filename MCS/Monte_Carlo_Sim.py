@@ -18,7 +18,9 @@ Run with: python MCS/Monte_Carlo_Sim.py [--ticker MCHP]
   Block 11: Excel Export (MCS_Results_{TICKER}.xlsx)
 """
 
-# region Block 0 - Imports & Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 0 - IMPORTS & SETUP
+# ----------------------------------------------------------------------------
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -75,7 +77,9 @@ from Merton.merton_core import merton_model
 # endregion
 
 
-# region Block 1 - Portfolio Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 1 - PORTFOLIO SETUP
+# ----------------------------------------------------------------------------
 
 
 def _load_json(filename: str) -> Any:
@@ -129,7 +133,9 @@ print(f"Simulations:     {SIMULATIONS:,}")
 # endregion
 
 
-# region Block 2 - Vasicek Simulation
+# ----------------------------------------------------------------------------
+# region BLOCK 2 - VASICEK SIMULATION
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Single-factor Vasicek model:
 #   Borrower i: X_i = sqrt(ρ)·Z + sqrt(1-ρ)·ε_i
@@ -162,7 +168,9 @@ print(f"\nSimulation complete. "
 # endregion
 
 
-# region Block 3 - Calculate Risk Measures
+# ----------------------------------------------------------------------------
+# region BLOCK 3 - CALCULATE RISK MEASURES
+# ----------------------------------------------------------------------------
 
 EL       = float(np.mean(portfolio_losses))
 UL       = float(np.std(portfolio_losses))
@@ -184,7 +192,9 @@ print(f"RC / EL Ratio:   {rc_el:.1f}x" if not np.isnan(rc_el) else "RC / EL Rati
 # endregion
 
 
-# region Block 4 - Risk Measure Scaling
+# ----------------------------------------------------------------------------
+# region BLOCK 4 - RISK MEASURE SCALING
+# ----------------------------------------------------------------------------
 # ────────────────────────────────────────────────────────────
 # The Vasicek loss-distribution chart (PNG) and the standalone HTML
 # report were removed. Only ul_pct is retained below because the
@@ -196,7 +206,9 @@ ul_pct = UL * 100
 # endregion
 
 
-# region Block 5 - Configurable Distributions
+# ----------------------------------------------------------------------------
+# region BLOCK 5 - CONFIGURABLE DISTRIBUTIONS
+# ----------------------------------------------------------------------------
 
 N_SIM = 10_000
 
@@ -299,7 +311,9 @@ for _pname, _mu_demo in _DEMO_MUS.items():
 # endregion
 
 
-# region Block 6 - Correlated Simulation with Cholesky
+# ----------------------------------------------------------------------------
+# region BLOCK 6 - CORRELATED SIMULATION WITH CHOLESKY
+# ----------------------------------------------------------------------------
 
 _TICKERS_5 = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 
@@ -406,7 +420,9 @@ for _tkr in _TICKERS_5:
 # endregion
 
 
-# region Block 7 - Macro Scenario Overlay
+# ----------------------------------------------------------------------------
+# region BLOCK 7 - MACRO SCENARIO OVERLAY
+# ----------------------------------------------------------------------------
 
 MACRO_REGIME = {
     "Recession": {"weight": 0.25, "wacc_adj": +0.02, "g1_adj": -0.02, "fcf_mult": 0.75},
@@ -461,7 +477,9 @@ for _rn in _regime_names:
 # endregion
 
 
-# region Block 8 - Portfolio VaR DCF
+# ----------------------------------------------------------------------------
+# region BLOCK 8 - PORTFOLIO VAR DCF
+# ----------------------------------------------------------------------------
 
 # Equity carries limited liability: its value cannot fall below zero. That is the
 # same assumption Model 1 makes when it prices equity as a call option with payoff
@@ -649,7 +667,9 @@ except Exception:
 # endregion
 
 
-# region Block 8b - QCOM Dashboard Chart
+# ----------------------------------------------------------------------------
+# region BLOCK 8B - QCOM DASHBOARD CHART
+# ----------------------------------------------------------------------------
 from plotly.subplots import make_subplots
 
 _IMAGES_FOLDER = os.path.join(PROJECT_ROOT, "images")
@@ -822,7 +842,9 @@ except Exception as _exc_qcom:
 # endregion
 
 
-# region Block 9 - Convergence Test
+# ----------------------------------------------------------------------------
+# region BLOCK 9 - CONVERGENCE TEST
+# ----------------------------------------------------------------------------
 
 N_LEVELS = [100, 250, 500, 1000, 2500, 5000, 7500, 10_000]
 
@@ -881,7 +903,9 @@ except Exception:
 # endregion
 
 
-# region Block 10 - Tornado Chart of Uncertainty
+# ----------------------------------------------------------------------------
+# region BLOCK 10 - TORNADO CHART OF UNCERTAINTY
+# ----------------------------------------------------------------------------
 
 
 def _ptf_var99_override(
@@ -1017,7 +1041,9 @@ except Exception:
 # endregion
 
 
-# region Block 11 - Excel Export
+# ----------------------------------------------------------------------------
+# region BLOCK 11 - EXCEL EXPORT
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Exports all MCS results into a single .xlsx workbook with one
 # sheet per result set. Same output folder as Merton_Model.py
@@ -1128,7 +1154,9 @@ print(f"  Risk_Comparison — {len(df_risk_comp)} row(s)")
 # endregion
 
 
-# region Interpretation
+# ----------------------------------------------------------------------------
+# region INTERPRETATION
+# ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
 print(f">>> PD(Merton) = {pd_merton:.4%}: "
       f"{'Low' if pd_merton < 0.01 else 'Moderate' if pd_merton < 0.05 else 'High'} "
@@ -1174,7 +1202,9 @@ print(f">>> {TICKER} Sim Median = {_act_med:.2f} USD "
 # endregion
 
 
-# region Legende
+# ----------------------------------------------------------------------------
+# region LEGENDE
+# ----------------------------------------------------------------------------
 print("\n=== Legende ===")
 print("N_LOANS        = Number of equally weighted individual loans in the portfolio")
 print("EXPOSURE       = Single exposure = 1/N_LOANS (normalized to portfolio size 1)")

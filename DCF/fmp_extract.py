@@ -19,7 +19,9 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CACHE_DIR = os.environ.get("FMP_CACHE_DIR", os.path.join(PROJECT_ROOT, "data", "FMP_Cache"))
 
 
-# region Cache access
+# ----------------------------------------------------------------------------
+# region CACHE ACCESS
+# ----------------------------------------------------------------------------
 def load_json(filename: str) -> Any:
     """Load a JSON cache file and return its contents."""
     path = os.path.join(CACHE_DIR, filename)
@@ -35,7 +37,9 @@ def load_prices(filename: str) -> pd.Series:
 # endregion
 
 
-# region Field mapping
+# ----------------------------------------------------------------------------
+# region FIELD MAPPING
+# ----------------------------------------------------------------------------
 def extract_wacc_inputs(
     income_data: Sequence[dict[str, Any]],
     total_debt: float,

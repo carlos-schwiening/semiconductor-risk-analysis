@@ -14,7 +14,9 @@ Run with: python DCF/DCF_Valuation.py [--ticker MCHP]
   Block 8: Excel Export (DCF_Results_{TICKER}.xlsx)
 """
 
-# region Block 0 - Imports & Setup
+# ----------------------------------------------------------------------------
+# region BLOCK 0 - IMPORTS & SETUP
+# ----------------------------------------------------------------------------
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -85,7 +87,9 @@ except ImportError:
 # endregion
 
 
-# region Block 1 - Load FMP Data
+# ----------------------------------------------------------------------------
+# region BLOCK 1 - LOAD FMP DATA
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Loads all DCF-relevant data from the local FMP cache:
 #   key-metrics       → WACC, EarningsYield, FCF-Yield, MarketCap
@@ -260,7 +264,9 @@ wacc_source = "CAPM"
 # endregion
 
 
-# region Block 2 - DCF Base Case (deterministic)
+# ----------------------------------------------------------------------------
+# region BLOCK 2 - DCF BASE CASE (DETERMINISTIC)
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Two-phase DCF model with normalized FCF:
 #   Phase 1 (years 1-5): recovery from cycle trough at g1 = GROWTH_MEAN
@@ -348,7 +354,9 @@ print(f"Valuation:               {valuation}")
 # endregion
 
 
-# region Block 3 - DCF Sensitivity Analysis
+# ----------------------------------------------------------------------------
+# region BLOCK 3 - DCF SENSITIVITY ANALYSIS
+# ----------------------------------------------------------------------------
 import plotly.graph_objects as go
 
 WACC_RANGE = [0.08, 0.09, 0.10, 0.11, 0.12, 0.13, 0.14]
@@ -510,7 +518,9 @@ _n_fair  = _n_total - _n_under - _n_over
 # endregion
 
 
-# region Block 4 - Monte Carlo DCF
+# ----------------------------------------------------------------------------
+# region BLOCK 4 - MONTE CARLO DCF
+# ----------------------------------------------------------------------------
 SIMULATIONS   = getattr(config, "SIMULATIONS",   10000)
 WACC_STD       = getattr(config, "WACC_STD",       0.015)
 GROWTH_STD   = getattr(config, "GROWTH_STD",   0.020)
@@ -614,7 +624,9 @@ except Exception:
 # endregion
 
 
-# region Block 5 - Scenario Analysis Bear / Base / Bull
+# ----------------------------------------------------------------------------
+# region BLOCK 5 - SCENARIO ANALYSIS BEAR / BASE / BULL
+# ----------------------------------------------------------------------------
 
 
 SCENARIOS_DCF = {
@@ -683,7 +695,9 @@ except Exception:
 # endregion
 
 
-# region Block 6 - Peer Group Comparison
+# ----------------------------------------------------------------------------
+# region BLOCK 6 - PEER GROUP COMPARISON
+# ----------------------------------------------------------------------------
 
 _ALL_TICKERS = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 _sp500_peer  = load_prices("SP500_historical-price-eod_full.json")
@@ -824,7 +838,9 @@ except Exception:
 # endregion
 
 
-# region Block 6b - g2 Sensitivity Analysis (Terminal Growth)
+# ----------------------------------------------------------------------------
+# region BLOCK 6B - G2 SENSITIVITY ANALYSIS (TERMINAL GROWTH)
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Varies g2 (Terminal Growth) for each ticker at constant
 # Base Case values for WACC, g1, FCF_norm. The g2 range covers the
@@ -868,7 +884,9 @@ for _tkr in _ALL_TICKERS:
 # endregion
 
 
-# region Block 7 - Multiples Cross-Check
+# ----------------------------------------------------------------------------
+# region BLOCK 7 - MULTIPLES CROSS-CHECK
+# ----------------------------------------------------------------------------
 
 mult_values = compute_multiples(
     ev         = ev,
@@ -922,7 +940,9 @@ else:
 # endregion
 
 
-# region Block 8 - Excel Export
+# ----------------------------------------------------------------------------
+# region BLOCK 8 - EXCEL EXPORT
+# ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
 # Exports all DCF results into a single .xlsx workbook with one
 # sheet per result set. Same output folder as Merton_Model.py.
@@ -992,7 +1012,9 @@ if not df_dcf_summary.empty:
 # endregion
 
 
-# region Interpretation
+# ----------------------------------------------------------------------------
+# region INTERPRETATION
+# ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
 
 if fcf_norm_negative:
@@ -1083,7 +1105,9 @@ print(f">>> Multiples Cross-Check: EV/EBITDA {ev_ebitda_mult:.1f}x ({mult_rating
 # endregion
 
 
-# region Legende
+# ----------------------------------------------------------------------------
+# region LEGENDE
+# ----------------------------------------------------------------------------
 print("\n=== Legende ===")
 print("dcf_core.py    = Pure calculation module (no I/O) — DCF, CAPM, sensitivity, Monte Carlo")
 print("base_params    = DcfParams for the active ticker: fcf_start, g1, g2, wacc, years, net_debt, shares")

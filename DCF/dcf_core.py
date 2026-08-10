@@ -19,7 +19,9 @@ MARKET_PREMIUM: float = 0.055
 DEFAULT_TAX_RATE: float = 0.21
 
 
-# region DCF Core
+# ----------------------------------------------------------------------------
+# region DCF CORE
+# ----------------------------------------------------------------------------
 class DcfParams(TypedDict):
     """Everything the two-phase DCF needs. All amounts in absolute USD."""
     fcf_start: float     # normalized FCF at t=0
@@ -87,7 +89,9 @@ def dcf_schedule(p: DcfParams) -> tuple[list[dict[str, float]], DcfResult]:
 # endregion
 
 
+# ----------------------------------------------------------------------------
 # region CAPM / WACC
+# ----------------------------------------------------------------------------
 def _log_returns(prices: pd.Series) -> pd.Series:
     """
     Log returns of a price series.
@@ -166,7 +170,9 @@ def wacc_capm(
 # endregion
 
 
-# region Sensitivity
+# ----------------------------------------------------------------------------
+# region SENSITIVITY
+# ----------------------------------------------------------------------------
 def sensitivity_matrix(
     p: DcfParams,
     wacc_range: Sequence[float],
@@ -203,7 +209,9 @@ def g2_sensitivity(
 # endregion
 
 
-# region Monte Carlo
+# ----------------------------------------------------------------------------
+# region MONTE CARLO
+# ----------------------------------------------------------------------------
 def simulate_dcf(
     p: DcfParams,
     n: int,
@@ -236,7 +244,9 @@ def simulate_dcf(
 # endregion
 
 
-# region Classification & Multiples
+# ----------------------------------------------------------------------------
+# region CLASSIFICATION & MULTIPLES
+# ----------------------------------------------------------------------------
 def cagr(newest: float, oldest: float, periods: int) -> float:
     """Compound annual growth rate; nan when the ratio is not positive."""
     if oldest == 0 or periods <= 0 or (newest / oldest) <= 0:
