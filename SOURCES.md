@@ -165,13 +165,20 @@ knowing about before comparing these figures to anything term-structured.
 
 ---
 
-## What this file does not yet do
+## Checking the numbers: `python verify.py`
 
-`credit-risk-validation` ships a `verify` command that recomputes every published
-figure from its source and reports a mismatch as a finding. This project does
-not have one, and its README carries roughly forty grown numbers.
+Run it from the project root. Without arguments it checks constants,
+configuration and structural facts; with `--full` (and `FMP_CACHE_DIR` set) it
+re-runs the Merton model per ticker and compares the Distance to Default figures
+against what the README publishes.
 
-That is a real gap, and today produced a concrete example of what it costs: the
-README claimed 51 tests for months after the suite had grown to 85. Nothing
-noticed, because nothing was checking. A `verify` command here would be worth
+The README carries roughly **290** numeric figures — my earlier estimate of forty
+was badly low — but most are cells in the three models' result tables and are
+outputs of the same runs. Re-running the models *is* the check for those. What
+`verify.py` covers individually is every figure that can drift on its own.
+
+Three figures cannot be recomputed by any code here and are printed at the end
+of every run so they are not mistaken for verified: the S&P observed default
+rates and the two Damodaran sector references. Those need a human and the
+current publication. A `verify` command here would be worth
 building, and it is not built yet.

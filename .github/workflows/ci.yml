@@ -35,7 +35,7 @@ jobs:
       # GBM_Paths_Export.py), which are plotting-only and not annotated yet.
       - name: Type check (mypy)
         run: >
-          mypy Merton/Merton_Model.py Merton/merton_core.py
+          mypy Merton/Merton_Model.py Merton/merton_core.py verify.py
           DCF/dcf_core.py DCF/fmp_extract.py
           DCF/DCF_Valuation.py DCF/DCF_Report.py
           MCS/Monte_Carlo_Sim.py MCS/mcs_core.py

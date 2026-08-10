@@ -279,6 +279,31 @@ DCF/fmp_extract.py      Cache access and FMP field mapping
 
 `fmp_extract.py` is the only module that knows FMP field names. The calculation modules never see them, so replacing the data provider means changing that one file. The remaining scripts (`Merton_Model.py`, `DCF_Valuation.py`, `DCF_Report.py`, `Monte_Carlo_Sim.py`) load data, call the core modules, and handle output.
 
+## Verifying the published figures
+
+```bash
+python verify.py            # constants, configuration, structural facts
+python verify.py --full     # also re-runs the models over the cached data
+```
+
+A number typed into a README has no connection to the code that produced it, and
+goes stale silently. This README claimed 51 tests for months after the suite had
+grown to 85 — nothing noticed, because nothing was checking.
+
+`verify.py` recomputes what can be recomputed and compares against what this
+document says. With `--full` and `FMP_CACHE_DIR` set it re-runs the Merton model
+per ticker and checks the Distance to Default figures in **Key Results** against
+freshly computed ones. It reads the published values *out of this file* rather
+than restating them, so a claim cannot quietly agree with itself.
+
+A mismatch is a **finding, not an annoyance**: either the source moved or the
+code did, and which one has to be established before either number is corrected.
+
+Three figures are named as **not checkable by code** and printed at the end of
+every run — the S&P observed default rates and the two Damodaran sector
+references come from outside publications and have to be re-checked by hand, so
+they are never silently assumed current.
+
 ## Tests & Continuous Integration
 
 [GitHub Actions](.github/workflows/ci.yml) runs on every push to `main`:
