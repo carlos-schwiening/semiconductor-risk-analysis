@@ -74,6 +74,22 @@ BG     = "#FFFFFF"; TEXT = "#1A1A1A"; BORDER = "#E5E5E5"; TEXT_MUTED = "#9CA3AF"
 # absolute import resolves the same way whether run as an installed package or as a direct script.
 from Merton.merton_core import merton_model
 
+# The simulation maths — extracted to mcs_core.py so it can be unit tested. This
+# script runs its whole analysis at import time, so nothing defined here could be
+# reached by a test without also fetching data and writing files.
+try:
+    from .mcs_core import (DISTRIBUTIONS, REL_CAP, REL_FLOOR, DistributionSpec,
+                           RiskMeasures, apply_distribution, correlation_matrix,
+                           dcf_array, diversification_benefit, loss_percent,
+                           relative_value, risk_measures, sample_distribution,
+                           vasicek_conditional_pd)
+except ImportError:
+    from mcs_core import (DISTRIBUTIONS, REL_CAP, REL_FLOOR, DistributionSpec,  # type: ignore[import-not-found,no-redef]
+                          RiskMeasures, apply_distribution, correlation_matrix,
+                          dcf_array, diversification_benefit, loss_percent,
+                          relative_value, risk_measures, sample_distribution,
+                          vasicek_conditional_pd)
+
 # endregion
 
 
@@ -149,10 +165,7 @@ np.random.seed(42)
 Z_sys = np.random.normal(0, 1, SIMULATIONS)
 
 # Conditional PD for each simulation
-_pd_inv  = norm.ppf(pd_portfolio)
-_sqrt_rho = np.sqrt(RHO)
-_sqrt_1rho = np.sqrt(1 - RHO)
-pd_cond  = norm.cdf((_pd_inv - _sqrt_rho * Z_sys) / _sqrt_1rho)  # shape (SIMULATIONS,)
+pd_cond = vasicek_conditional_pd(pd_portfolio, RHO, Z_sys)  # shape (SIMULATIONS,)
 
 # Bernoulli draws: U ~ Uniform(0,1), default when U < pd_cond
 # U shape: (SIMULATIONS, N_LOANS) — vectorized, no Python loop
@@ -172,11 +185,12 @@ print(f"\nSimulation complete. "
 # region BLOCK 3 - CALCULATE RISK MEASURES
 # ----------------------------------------------------------------------------
 
+_vasicek = risk_measures(portfolio_losses)
 EL       = float(np.mean(portfolio_losses))
 UL       = float(np.std(portfolio_losses))
-VaR_99   = float(np.percentile(portfolio_losses, 99))
+VaR_99   = _vasicek.var_99
 VaR_999  = float(np.percentile(portfolio_losses, 99.9))
-CVaR_99  = float(np.mean(portfolio_losses[portfolio_losses >= VaR_99]))
+CVaR_99  = _vasicek.cvar_99
 RC       = VaR_999 - EL
 
 print(f"\n{'─'*40}")
@@ -212,87 +226,8 @@ ul_pct = UL * 100
 
 N_SIM = 10_000
 
-class DistributionSpec(TypedDict, total=False):
-    """
-    Parameters of one input distribution. Which keys are present depends on
-    "type" — a normal has "std", a uniform has "min"/"max", and so on. total=False
-    keeps that flexible while still typing every value as a number instead of the
-    dict[str, object] that mypy would otherwise infer from the mixed literal.
-    """
-    type: str
-    std: float
-    min: float
-    max: float
-    sigma: float
-    alpha: float
-    beta_param: float
-
-
-DISTRIBUTIONS: dict[str, DistributionSpec] = {
-    "WACC": {"type": "normal",     "std": 0.015},
-    "g1":   {"type": "triangular", "min": 0.00, "max": 0.12},
-    "FCF":  {"type": "lognormal",  "sigma": 0.25},
-    "g2":   {"type": "uniform",    "min": 0.015, "max": 0.035},
-    "LGD":  {"type": "beta",       "alpha": 2,   "beta_param": 3},
-    "rho":  {"type": "uniform",    "min": 0.10,  "max": 0.40},
-}
-
-
-def sample_distribution(name: str, mu: float, n: int, seed: Optional[int] = None) -> np.ndarray:
-    """Draw n samples from the configured distribution for parameter `name`."""
-    if seed is not None:
-        np.random.seed(seed)
-    dist  = DISTRIBUTIONS[name]
-    dtype = dist["type"]
-    if dtype == "normal":
-        return np.random.normal(mu, dist["std"], n)
-    elif dtype == "triangular":
-        return np.random.triangular(dist["min"], np.clip(mu, dist["min"] + 1e-9, dist["max"] - 1e-9), dist["max"], n)
-    elif dtype == "lognormal":
-        if mu <= 0:
-            return np.random.normal(mu, abs(mu) * dist["sigma"], n)
-        return np.random.lognormal(np.log(mu) - 0.5 * dist["sigma"] ** 2, dist["sigma"], n)
-    elif dtype == "uniform":
-        return np.random.uniform(dist["min"], dist["max"], n)
-    elif dtype == "beta":
-        a, b = dist["alpha"], dist["beta_param"]
-        raw      = np.random.beta(a, b, n)
-        expected = a / (a + b)
-        return np.clip(raw * mu / expected, 0.0, 1.0) if expected > 0 else raw
-    else:
-        return np.full(n, mu)
-
-
-def apply_distribution(name: str, mu: float, z_arr: np.ndarray) -> np.ndarray:
-    """Transform standard-normal z_arr to target distribution via Gaussian copula."""
-    dist  = DISTRIBUTIONS[name]
-    dtype = dist["type"]
-    if dtype == "normal":
-        return mu + z_arr * dist["std"]
-    elif dtype == "lognormal":
-        if mu <= 0:
-            return mu + abs(mu) * dist["sigma"] * z_arr
-        return mu * np.exp(dist["sigma"] * z_arr - 0.5 * dist["sigma"] ** 2)
-    elif dtype == "triangular":
-        u  = norm.cdf(z_arr)
-        a  = dist["min"]
-        b  = dist["max"]
-        c  = np.clip(float(mu), a + 1e-9, b - 1e-9)
-        fc = (c - a) / (b - a)
-        return np.where(u < fc,
-                        a + np.sqrt(np.maximum(u * (b - a) * (c - a), 0.0)),
-                        b - np.sqrt(np.maximum((1 - u) * (b - a) * (b - c), 0.0)))
-    elif dtype == "uniform":
-        return dist["min"] + norm.cdf(z_arr) * (dist["max"] - dist["min"])
-    elif dtype == "beta":
-        from scipy.stats import beta as _beta
-        a, b = dist["alpha"], dist["beta_param"]
-        u    = np.clip(norm.cdf(z_arr), 1e-6, 1 - 1e-6)
-        raw  = _beta.ppf(u, a, b)
-        expected = a / (a + b)
-        return np.clip(raw * mu / expected, 0.0, 1.0) if expected > 0 else raw
-    else:
-        return np.full(len(z_arr), float(mu))
+# DistributionSpec, DISTRIBUTIONS, sample_distribution and apply_distribution
+# are imported from mcs_core above.
 
 
 _DEMO_MUS = {"WACC": 0.12, "g1": 0.05, "FCF": 2.5e9, "g2": 0.025, "LGD": 0.45, "rho": 0.25}
@@ -364,27 +299,7 @@ _Z_indep = np.random.standard_normal((N_SIM, 5))
 _Z_corr  = _Z_indep @ _L_CHOL.T  # shape (N_SIM, 5) — correlated
 
 
-def _dcf_array(
-    wacc_arr: np.ndarray,
-    g1_arr: np.ndarray,
-    fcf_start_arr: np.ndarray,
-    g2_arr: np.ndarray,
-    prog: float,
-    nd: float,
-    shares: float,
-) -> np.ndarray:
-    """Vectorized two-phase DCF. Returns equity-per-share array (NaN if invalid)."""
-    valid  = wacc_arr > g2_arr
-    fcf_t  = np.where(fcf_start_arr > -1e13, fcf_start_arr, 0.0)
-    pv_sum = np.zeros(len(wacc_arr))
-    for t in range(1, int(prog) + 1):
-        fcf_t   = fcf_t * (1 + g1_arr)
-        pv_sum += fcf_t / (1 + wacc_arr) ** t
-    tv     = np.where(valid, fcf_t * (1 + g2_arr) / (wacc_arr - g2_arr), 0.0)
-    pv_tv  = np.where(valid, tv / (1 + wacc_arr) ** prog, 0.0)
-    equity = pv_sum + pv_tv - nd
-    wa     = np.where(shares > 0, equity / shares, np.nan)
-    return np.where(valid, wa, np.nan)
+# _dcf_array is imported from mcs_core as dcf_array.
 
 
 _sim_wa = {}
@@ -394,7 +309,7 @@ for _i, _tkr in enumerate(_TICKERS_5):
     _g    = np.clip(apply_distribution("g1",   _ticker_g1[_tkr],   _z_i),        0.00, 0.15)
     _fcf  =         apply_distribution("FCF",  _ticker_fcf[_tkr],  _z_i)
     _g2   = np.clip(apply_distribution("g2",   _ticker_g2[_tkr],   _z_i),        0.01, 0.04)
-    _sim_wa[_tkr] = _dcf_array(_wc, _g, _fcf, _g2, _ticker_prog[_tkr],
+    _sim_wa[_tkr] = dcf_array(_wc, _g, _fcf, _g2, _ticker_prog[_tkr],
                                 _ticker_nd[_tkr], _ticker_shr[_tkr])
 
 # Terminal output
@@ -452,7 +367,7 @@ for _i, _tkr in enumerate(_TICKERS_5):
         _fcf[_mask] = _fcf[_mask] * _r["fcf_mult"]
 
     _g2_r = np.clip(_g2_r, 0.01, 0.04)
-    _sim_wa_regime[_tkr] = _dcf_array(
+    _sim_wa_regime[_tkr] = dcf_array(
         _wc, _g, _fcf, _g2_r,
         _ticker_prog[_tkr], _ticker_nd[_tkr], _ticker_shr[_tkr]
     )
@@ -492,8 +407,7 @@ REL_CAP   = 5.0
 _ptf_rel = np.zeros(N_SIM)
 for _tkr in _TICKERS_5:
     _wa  = _sim_wa_regime[_tkr]
-    _rel = np.where(np.isnan(_wa) | (_ticker_price[_tkr] == 0), 1.0, _wa / _ticker_price[_tkr])
-    _rel = np.clip(_rel, REL_FLOOR, REL_CAP)
+    _rel = relative_value(_wa, _ticker_price[_tkr])
     _ptf_rel += 0.20 * _rel
 
 _ptf_value = _ptf_rel * 100       # normalized to 100
@@ -508,8 +422,8 @@ _p_under_ptf = float(np.mean(_ptf_loss < 0))
 _indiv_stds = []
 for _tkr in _TICKERS_5:
     _wa = _sim_wa_regime[_tkr]
-    _rel = np.where(np.isnan(_wa) | (_ticker_price[_tkr] == 0), 1.0, _wa / _ticker_price[_tkr])
-    _indiv_stds.append(float(np.nanstd(np.clip(_rel, REL_FLOOR, REL_CAP)) * 100))
+    _rel = relative_value(_wa, _ticker_price[_tkr])
+    _indiv_stds.append(float(np.nanstd(_rel) * 100))
 _port_std    = float(np.nanstd(_ptf_value))
 _avg_std     = float(np.mean(_indiv_stds))
 _divers      = 1.0 - _port_std / _avg_std if _avg_std > 0 else 0.0
@@ -532,9 +446,8 @@ for _tkr in _TICKERS_5:
                               "CVaR_99": float("nan")}
         continue
     _wa_tkr   = _sim_wa_regime[_tkr]
-    _rel_tkr  = np.where(np.isnan(_wa_tkr) | (_ticker_price[_tkr] == 0), 1.0, _wa_tkr / _ticker_price[_tkr])
-    _rel_tkr  = np.clip(_rel_tkr, REL_FLOOR, REL_CAP)
-    _loss_tkr = 100.0 - (_rel_tkr * 100)
+    _rel_tkr  = relative_value(_wa_tkr, _ticker_price[_tkr])
+    _loss_tkr = loss_percent(_rel_tkr)
     _var95_t  = float(np.percentile(_loss_tkr, 95))
     _var99_t  = float(np.percentile(_loss_tkr, 99))
     _cvar99_t = float(np.mean(_loss_tkr[_loss_tkr >= _var99_t]))
@@ -548,8 +461,7 @@ if _DCF_APPLICABLE and _DCF_EXCLUDED:
     _app_rel = np.zeros(N_SIM)
     for _tkr in _DCF_APPLICABLE:
         _wa_a  = _sim_wa_regime[_tkr]
-        _rel_a = np.where(np.isnan(_wa_a) | (_ticker_price[_tkr] == 0), 1.0, _wa_a / _ticker_price[_tkr])
-        _app_rel += _w_app * np.clip(_rel_a, REL_FLOOR, REL_CAP)
+        _app_rel += _w_app * relative_value(_wa_a, _ticker_price[_tkr])
     _app_value  = _app_rel * 100
     _app_median = float(np.median(_app_value))
     _app_loss   = 100.0 - _app_value
@@ -930,9 +842,8 @@ def _ptf_var99_override(
         _g  = np.clip(apply_distribution("g1",   _ticker_g1[_tkr],   _z) + g1_delta,  0.00, 0.15)
         _fc = apply_distribution("FCF", _ticker_fcf[_tkr], _z) * fcf_mult
         _g2 = np.clip(apply_distribution("g2", _ticker_g2[_tkr], _z) + g2_delta, 0.01, 0.04)
-        _wa = _dcf_array(_wc, _g, _fc, _g2, _ticker_prog[_tkr], _ticker_nd[_tkr], _ticker_shr[_tkr])
-        _rel = np.where(np.isnan(_wa) | (_ticker_price[_tkr] == 0), 1.0, _wa / _ticker_price[_tkr])
-        _pv += _w * np.clip(_rel, REL_FLOOR, REL_CAP)
+        _wa = dcf_array(_wc, _g, _fc, _g2, _ticker_prog[_tkr], _ticker_nd[_tkr], _ticker_shr[_tkr])
+        _pv += _w * relative_value(_wa, _ticker_price[_tkr])
     return float(np.percentile((1.0 - _pv) * 100, 99))
 
 
@@ -1234,7 +1145,11 @@ print("_CORR_MAT      = 5×5 sector correlation matrix (ρ=0.60 off-diagonal)")
 print("_L_CHOL        = Cholesky factor of _CORR_MAT (L @ L.T = _CORR_MAT)")
 print("_Z_indep       = Uncorrelated N(0,1) draws (N_SIM × 5)")
 print("_Z_corr        = Correlated draws: _Z_indep @ _L_CHOL.T")
-print("_dcf_array()   = Vectorized two-phase DCF (arrays, no Python loop)")
+print("mcs_core.py    = Pure calculation module (no I/O) — distributions, DCF, loss, risk measures")
+print("dcf_array()    = mcs_core: vectorized two-phase DCF (arrays, no Python loop)")
+print("relative_value() = mcs_core: value/share over price, floored at 0 and capped at 5")
+print("loss_percent()   = mcs_core: 100 - relative*100; cannot exceed 100 because of the floor")
+print("risk_measures()  = mcs_core: VaR 95/99 and CVaR 99 of one loss distribution")
 print("_sim_wa        = Dict: Ticker → sim array of value/share (Block 6, no regime)")
 print("MACRO_REGIME   = Dict: Recession/Base/Boom with weights and parameter adjustments")
 print("_regime_idx    = Per-simulation regime index (multinomial draw)")

@@ -38,7 +38,7 @@ jobs:
           mypy Merton/Merton_Model.py Merton/merton_core.py
           DCF/dcf_core.py DCF/fmp_extract.py
           DCF/DCF_Valuation.py DCF/DCF_Report.py
-          MCS/Monte_Carlo_Sim.py
+          MCS/Monte_Carlo_Sim.py MCS/mcs_core.py
 
       - name: Run tests (pytest)
         run: pytest -v
