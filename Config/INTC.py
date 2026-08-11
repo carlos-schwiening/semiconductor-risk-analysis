@@ -10,13 +10,13 @@ import os
 # ----------------------------------------------------------------------------
 COMPANY           = "Intel Corporation"
 TICKER            = "INTC"
-RATING            = "BBB"
+RATING            = "BBB"   # agency rating, scale S&P/Fitch — agency and as-of date not recorded, see TODO in README
 # endregion
 
 # ----------------------------------------------------------------------------
 # region MERTON PARAMETERS
 # ----------------------------------------------------------------------------
-RISK_FREE_RATE    = 0.043
+RISK_FREE_RATE    = 0.043   # 10Y US Treasury, as of 2026-06-30 (SOURCES.md #7)
 MATURITY          = 1
 # endregion
 
@@ -27,7 +27,7 @@ WACC_MEAN         = 0.09
 WACC_STD          = 0.015
 GROWTH_MEAN       = 0.03
 GROWTH_STD        = 0.025
-TERMINAL_GROWTH   = 0.02
+TERMINAL_GROWTH   = 0.02    # long-run assumption anchored to the 2% central-bank inflation target, not a datum
 FORECAST_YEARS    = 5
 # endregion
 
