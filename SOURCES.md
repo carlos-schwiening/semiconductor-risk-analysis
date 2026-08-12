@@ -112,19 +112,46 @@ Merton five-year PD next to S&P's observed cumulative default rate for the same
 rating category — the test of whether a modelled probability is in the right
 order of magnitude at all.
 
-**Which figures.** Average cumulative default rates by rating category,
-1981–2023, from S&P Global Ratings' annual default and transition study.
+**Which figures.** One edition, named exactly, because the previous entry was not:
 
-**See it yourself.** <https://www.spglobal.com/ratings/en/research-insights/topics/default-transition-and-recovery>
-The study is published yearly and free to read, but the site blocks automated
-access and may ask you to register. If the link fails, searching for *"S&P
-Global annual global corporate default and rating transition study"* finds the
-current edition.
+> S&P Global Ratings, *Default, Transition, and Recovery: 2024 Annual Global
+> Corporate Default And Rating Transition Study*, published 27 March 2025,
+> **Table 24**, page 56 — "Global corporate average cumulative default rates,
+> 1981-2024". Underlying data: S&P Global Market Intelligence's CreditPro.
 
-**Limits that matter.** These are **realised historical frequencies** for rated
-issuers, not forward-looking probabilities, and the rated universe skews larger
-and better-capitalised than the market as a whole. They are the right yardstick
-for "is this number plausible", and the wrong one for "is this number correct".
+| Rating | Y1 | Y5 |
+|--------|---:|---:|
+| AAA | 0.00% | 0.34% |
+| AA | 0.02% | 0.28% |
+| A | 0.05% | 0.39% |
+| BBB | 0.14% | 1.36% |
+| BB | 0.56% | 5.75% |
+| B | 2.93% | 15.60% |
+| CCC/C | 26.12% | 46.53% |
+
+**See it yourself.** <https://maalot.co.il/Publications/FTS20250331162126.pdf> —
+the full text mirrored by Maalot, S&P's Israeli affiliate, free and without a
+login. Table 24 begins on page 55 and continues on 56. The same document behind
+<https://www.spglobal.com/ratings/en/research-insights/topics/default-transition-and-recovery>
+requires registration.
+
+**Limits that matter.**
+- **The previous figures matched no edition.** They read AAA/AA 0.30, A 0.55,
+  BBB 1.55, BB 5.60 at five years. Checked against three editions, A 0.55 fits an
+  older one while BB 5.60 is below even the newest — mutually exclusive, and all
+  four ended in a round 0 or 5, which S&P's figures effectively never do. They
+  were smoothed by hand somewhere along the way. Every figure now comes from the
+  single edition named above.
+- **A newer edition exists** (1981–2025, published 18 March 2026) but only its
+  teaser is free; the tables sit behind registration. Moving to it means moving
+  all seven values at once, not just the reachable ones.
+- **AAA looks worse than AA at five years** (0.34% vs 0.28%). That is in the
+  source, not a transcription error — the AAA cohort is small enough that its
+  rates are noisy. It is also why MPWR's combined AAA/AA bucket is shown as a
+  range rather than one number.
+- **Realised historical frequencies**, not forward-looking probabilities, and the
+  rated universe skews larger and better-capitalised than the market as a whole.
+  The right yardstick for "is this plausible", the wrong one for "is this right".
 
 ---
 
@@ -202,6 +229,48 @@ exist, not because it is unknown.
   that look like agency ratings but are FMP's own metric scoring — it grades
   Intel `D+`. Using it here would have put a junk grade beside an
   investment-grade issuer.
+
+---
+
+## 9. ICE BofA — corporate credit spreads by rating
+
+**What for.** The *Market Benchmark (bps)* column in Model 1. It is what the
+model's own theoretical spread is held against, and without it that spread has
+nothing to be too low compared to.
+
+**Which figures.** ICE BofA option-adjusted spreads (OAS) by rating category —
+the extra yield over Treasuries the market demands for a bond of that grade. The
+table stores the trailing-year **low and high** per category rather than a single
+day, so one unusual session cannot move a published band.
+
+| Category | Band (bps) | FRED series |
+|----------|-----------:|-------------|
+| AAA/AA | 27–61 | `BAMLC0A1CAAA`, `BAMLC0A2CAA` |
+| A | 59–79 | `BAMLC0A3CA` |
+| BBB | 92–116 | `BAMLC0A4CBBB` |
+| BB | 156–222 | `BAMLH0A1HYBB` |
+| B | 276–377 | `BAMLH0A2HYB` |
+| CCC | 783–1034 | `BAMLH0A3HYC` |
+
+As of **2026-08-11**, over 263 trading days.
+
+**See it yourself.** <https://fred.stlouisfed.org/series/BAMLC0A4CBBB> — free, no
+registration, no key, updated daily. Swap the series ID for any other row. The
+raw CSV is at `https://fred.stlouisfed.org/graph/fredgraph.csv?id=<SERIES>`.
+
+**Cost.** None. Unlike the vendor price data, these may be quoted in public.
+
+**Limits that matter.**
+- **Index-level, not issuer-level.** A BBB semiconductor issuer is not the BBB
+  index. The band answers "is the model in the right region", not "is this the
+  right spread for MCHP".
+- **Dated, and spreads move.** The previous values in this repository — 30–50,
+  60–90, 120–180, 250–400, 400–650, 800–1200 — had no source and no date, and
+  overstated the middle of the curve by 50 to 130 percent against the current
+  market. That is the failure this entry exists to prevent.
+- **OAS strips out embedded options**, so it is comparable to a plain bullet
+  spread. The Merton spread has no optionality either, which is why the two can
+  be placed side by side at all.
 
 ---
 

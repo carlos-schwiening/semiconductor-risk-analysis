@@ -56,17 +56,27 @@ def merton_model(
 # ----------------------------------------------------------------------------
 # region RATING & CREDIT SPREAD
 # ----------------------------------------------------------------------------
-# The band edges are chosen, not calibrated. Deriving them from observed default
-# rates squeezes all of investment grade into DD 2.95-3.54, because the normal
-# tail is too thin above that. KMV answered the same wall by replacing N(-DD)
-# with an empirical default frequency - see the README.
+# Two very different kinds of number sit in this table, and conflating them is
+# what let an invented figure stand in the README for months.
+#
+# DD BANDS - a model parameter with no source. The edges 8/6/4/2/1 were chosen,
+# not taken from any publication. Calibrating them against observed default rates
+# is possible in principle and useless in practice: it squeezes all of investment
+# grade into DD 2.95-3.54, because the normal tail is too thin above that. The
+# defensible replacement is a mapping over the five-year PD against the S&P
+# default study (SOURCES.md #5), not a better set of DD cut-offs.
+#
+# SPREAD BANDS - external market data. ICE BofA option-adjusted spreads by rating
+# category, trailing-year low and high as of 2026-08-11 (SOURCES.md #9). They
+# previously read 30-50 / 60-90 / 120-180 / 250-400 / 400-650 / 800-1200 with no
+# source at all, and overstated the middle of the curve by 50 to 130 percent.
 RATING_TABLE: list[tuple[str, float, float, int, int]] = [
-    ("AAA/AA",  8.0,  float("inf"),  30,   50),
-    ("A",       6.0,  8.0,           60,   90),
-    ("BBB",     4.0,  6.0,           120,  180),
-    ("BB",      2.0,  4.0,           250,  400),
-    ("B",       1.0,  2.0,           400,  650),
-    ("CCC",     0.0,  1.0,           800,  1200),
+    ("AAA/AA",  8.0,  float("inf"),  27,   61),
+    ("A",       6.0,  8.0,           59,   79),
+    ("BBB",     4.0,  6.0,           92,   116),
+    ("BB",      2.0,  4.0,           156,  222),
+    ("B",       1.0,  2.0,           276,  377),
+    ("CCC",     0.0,  1.0,           783,  1034),
 ]
 
 

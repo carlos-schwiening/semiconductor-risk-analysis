@@ -128,9 +128,12 @@ if pd_floor_applied:
 # ── Portfolio parameters ───────────────────────────────────────
 N_LOANS      = 100
 EXPOSURE     = 1.0 / N_LOANS   # equally weighted portfolio, normalized to 1
-LGD          = 0.45
+LGD          = 0.45   # Basel II Foundation IRB, senior unsecured claims on corporates
 SIMULATIONS = 10000
-RHO          = 0.20               # asset correlation (Basel II standard)
+# Basel II IRB puts the corporate asset correlation between 0.12 and 0.24,
+# interpolated by PD. 0.20 is a mid-range pick inside that band, not a value the
+# framework prescribes - a lower one would thin the loss tail noticeably.
+RHO          = 0.20
 pd_portfolio = pd_merton
 
 print(f"\n{'='*60}")
@@ -288,7 +291,11 @@ for _tkr in _TICKERS_5:
     _ticker_nd[_tkr]  = _debt_t - _cash_t
     _ticker_shr[_tkr] = _mc_t / _ticker_price[_tkr] if _ticker_price[_tkr] > 0 else 1.0
 
-# Sector correlation matrix (5×5, off-diagonal = 0.60)
+# Sector correlation matrix (5x5, off-diagonal = _RHO_SECTOR).
+# Chosen, not estimated and not from any publication. Semiconductor names do
+# co-move strongly, and 0.60 is the level at which the portfolio still shows a
+# diversification effect worth reporting rather than none at all. Estimating it
+# from the five return series is the obvious improvement and is not done here.
 _RHO_SECTOR = 0.60
 _CORR_MAT   = np.full((5, 5), _RHO_SECTOR)
 np.fill_diagonal(_CORR_MAT, 1.0)

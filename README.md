@@ -38,15 +38,22 @@ IFRS 9 `ECL` integration classifies each borrower into Stage 1 ($DD$ > 4, 12-mon
 
 | Ticker | Company | Distance to Default | Model Rating | IFRS 9 Stage | Model Spread (bps) | Market Benchmark (bps) |
 |--------|---------|--------------------:|--------------|:-------------|-------------------:|:----------------------|
-| MCHP | Microchip Technology | 5.14 | BBB | Stage 1 | 0.0 | 120–180 |
-| INTC | Intel Corporation | 3.65 | BB | Stage 2 | 0.6 | 250–400 |
-| ON | ON Semiconductor | 4.17 | BBB | Stage 1 | 0.1 | 120–180 |
-| QCOM | Qualcomm | 6.52 | A | Stage 1 | 0.0 | 60–90 |
-| MPWR | Monolithic Power Systems | 13.88 | AAA/AA | Stage 1 | 0.0 | 30–50 |
+| MCHP | Microchip Technology | 5.14 | BBB | Stage 1 | 0.0 | 92–116 |
+| INTC | Intel Corporation | 3.65 | BB | Stage 2 | 0.6 | 156–222 |
+| ON | ON Semiconductor | 4.17 | BBB | Stage 1 | 0.1 | 92–116 |
+| QCOM | Qualcomm | 6.52 | A | Stage 1 | 0.0 | 59–79 |
+| MPWR | Monolithic Power Systems | 13.88 | AAA/AA | Stage 1 | 0.0 | 27–61 |
 
-**The rating letters are model-internal, and their thresholds are chosen rather than calibrated.** The Merton model returns two numbers, `DD` and `PD` — no letters anywhere. The letters come from a lookup table in `merton_core.py` that maps `DD` bands onto familiar labels, and the band edges are round numbers: 8, 6, 4, 2, 1.
+**The two columns above come from very different places, and the difference matters more than either number.**
 
-That is a genuine limitation, and the reason it was not fixed is more interesting than the limitation. Calibrating the edges to observed default rates is possible in principle — invert S&P's 1981–2023 figures through `N(−DD)` — but it collapses the whole investment-grade range into `DD` 2.95 to 3.54, a span of 0.59. Above that the normal distribution calls default effectively impossible, which is exactly why `PD` 1Y prints 0.0000% for QCOM and MPWR. The Gaussian tail is too thin for the job. Moody's KMV hit the same wall and answered it by discarding `N(−DD)` in favour of an empirically estimated default frequency — a step that needs a default database, not a better threshold. The letters here are therefore readable labels on `DD` bands, not a credit opinion.
+- **Market Benchmark** — external data: ICE BofA option-adjusted spreads by rating category, trailing-year low and high as of 2026-08-11 ([SOURCES.md](SOURCES.md) #9). Free from FRED, no key.
+- **Model Rating** — a model parameter with **no source at all**. The band edges are 8, 6, 4, 2, 1, and they were chosen, not taken from any publication.
+
+The Merton model returns `DD` and `PD`. No letters anywhere; a lookup table in `merton_core.py` supplies those.
+
+Calibrating the edges against observed default rates is possible in principle — invert S&P's one-year 1981–2024 figures through `N(−DD)` — and useless in practice: it collapses AA through BBB into `DD` 2.99 to 3.54, a span of 0.55, and AAA does not map at all because its observed one-year rate is 0.00%. Above that band the normal distribution calls default effectively impossible, which is exactly why `PD` 1Y prints 0.0000% for QCOM and MPWR. The Gaussian tail is too thin for the job, and Moody's KMV answered the same wall by discarding `N(−DD)` for an empirically estimated default frequency.
+
+The defensible replacement is therefore not a better set of `DD` cut-offs but a mapping over the **five-year** `PD` against the S&P default study — the horizon at which this model's own figures already land in the right neighbourhood, as the table further down shows. Until that is built, the letters are readable labels on `DD` bands and not a credit opinion.
 
 ### Model against the agencies
 
@@ -66,15 +73,15 @@ MPWR is the row worth pausing on. With $0.02 Bn of debt it has nothing for an ag
 
 | Ticker | Model Rating | $PD$ 1Y (model) | $PD$ 1Y (observed) | $PD$ 5Y (model) | $PD$ 5Y (observed) |
 |--------|--------------|----------------:|-------------------:|----------------:|-------------------:|
-| MCHP | BBB | 0.0000% | 0.16% | **1.95%** | 1.55% |
-| QCOM | A | 0.0000% | 0.05% | **0.33%** | 0.55% |
-| INTC | BB | 0.0131% | 0.63% | **9.82%** | 5.60% |
-| ON | BBB | 0.0015% | 0.16% | **6.40%** | 1.55% |
-| MPWR | AAA/AA | 0.0000% | 0.02% | 0.00% | 0.30% |
+| MCHP | BBB | 0.0000% | 0.14% | **1.95%** | 1.36% |
+| QCOM | A | 0.0000% | 0.05% | **0.33%** | 0.39% |
+| INTC | BB | 0.0131% | 0.56% | **9.82%** | 5.75% |
+| ON | BBB | 0.0015% | 0.14% | **6.40%** | 1.36% |
+| MPWR | AAA/AA | 0.0000% | 0.00–0.02% | 0.00% | 0.28–0.34% |
 
-*Observed = S&P Global average cumulative default rates by rating category, 1981–2023.*
+*Observed = S&P Global Ratings, **2024 Annual Global Corporate Default And Rating Transition Study** (27 March 2025), Table 24 — global corporate average cumulative default rates, 1981–2024. Every figure comes from that one edition; see [SOURCES.md](SOURCES.md) #5 for why that matters. AAA and AA are listed separately there, hence the range for MPWR's bucket.*
 
-Three of the five land in the right neighbourhood at five years, which is the more meaningful validation of a structural model than any one-year figure. ON is the exception and worth naming: its five-year `PD` of 6.40% is four times the BBB benchmark, so the model's own outputs disagree with each other — the rating bucket derives from the one-year `DD`, the lifetime `ECL` from the five-year `PD`, and for ON those two tell different stories. MPWR's 0.00% reflects a firm with almost no debt, where the structural model has nothing to price.
+Three of the five land in the right neighbourhood at five years, which is the more meaningful validation of a structural model than any one-year figure. ON is the exception and worth naming: its five-year `PD` of 6.40% is nearly five times the BBB benchmark, so the model's own outputs disagree with each other — the rating bucket derives from the one-year `DD`, the lifetime `ECL` from the five-year `PD`, and for ON those two tell different stories. MPWR's 0.00% reflects a firm with almost no debt, where the structural model has nothing to price.
 
 **The model spread sits far below the market benchmark for every ticker — that gap is a result, not an error.** The theoretical spread follows from the risk-neutral $PD$ via $s = -\ln(1 - PD \cdot LGD)\,/\,T$, and at a one-year horizon the Merton $PD$ for an investment-grade issuer is vanishingly small: a $DD$ of 5.14 corresponds to a $PD$ of roughly $10^{-7}$. The structural model therefore prices almost no credit risk, while observed market spreads compensate for liquidity, recovery uncertainty, and the jump-to-default risk that a diffusion process cannot represent. This is the well-documented credit spread puzzle of structural models at short horizons. The script reports the comparison explicitly for the active ticker (`Model UNDER market range`), which is why the benchmark band is shown alongside rather than in place of the model output — the informative content of the Merton model here lies in the $DD$ ranking and the IFRS 9 staging, not in the absolute spread level.
 

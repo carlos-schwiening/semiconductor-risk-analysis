@@ -153,6 +153,41 @@ def _claimed_agency_rating(ticker: str) -> str:
 def _claimed_model_rating_in_comparison(ticker: str) -> str:
     row = _readme_agency_table().get(ticker)
     return row["model"] if row else "?"
+
+
+def _readme_spread_bands() -> dict[str, str]:
+    """
+    The Market Benchmark column of the Model 1 table, per rating.
+
+    That column is external market data (SOURCES.md #9) sitting in the same
+    tuple as the DD band edges, which are a model parameter with no source. The
+    two drifted apart once already, in the direction nobody checks: the README
+    kept unsourced figures while the code was the only place they existed.
+    """
+    bands: dict[str, str] = {}
+    inside = False
+    for line in _readme().splitlines():
+        if line.startswith("#"):
+            inside = line.strip() == "## Model 1 — Merton Structural Credit Risk"
+            continue
+        if not inside:
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 7 and cells[0] in TICKERS:
+            bands[cells[3]] = cells[6].replace("–", "-")
+    return bands
+
+
+def _code_spread_bands() -> dict[str, str]:
+    """The same bands as the rating table actually holds them."""
+    # The suppression sits on the first import of merton_core in this file and
+    # nowhere else - mypy reports an unresolved module once, so a second one
+    # would be flagged unused by warn_unused_ignores.
+    from merton_core import RATING_TABLE   # type: ignore[import-not-found]
+    published = _readme_spread_bands()
+    return {rating: f"{lo}-{hi}"
+            for rating, _dd_min, _dd_max, lo, hi in RATING_TABLE
+            if rating in published}
 # endregion
 
 
@@ -194,7 +229,7 @@ def _dcf_collapses_to_perpetuity() -> bool:
 
 
 def _rating_for_dd(dd: float) -> str:
-    from merton_core import get_rating_info   # type: ignore[import-not-found]
+    from merton_core import get_rating_info
     return str(get_rating_info(dd)[0])
 
 
@@ -347,6 +382,13 @@ def build_claims() -> list[Claim]:
             compute=_dcf_collapses_to_perpetuity,
         ),
         Claim(
+            source="9. ICE BofA spreads",
+            claim="the published spread bands are the ones the code holds",
+            document=README,
+            expected=_readme_spread_bands(),
+            compute=_code_spread_bands,
+        ),
+        Claim(
             source="Repository itself",
             claim="every image the README links to exists",
             document=README,
@@ -412,8 +454,13 @@ def build_claims() -> list[Claim]:
 BY_HAND = [
     ("8. Agency ratings", "the rating letters themselves, and whether they still hold",
      "each row in SOURCES.md #8 carries its agency and date - re-check the oldest"),
-    ("5. S&P Global", "observed cumulative default rates by rating, 1981-2023",
-     "check against the current annual default and transition study"),
+    ("9. ICE BofA spreads", "the bands themselves, dated 2026-08-11",
+     "fred.stlouisfed.org/series/BAMLC0A4CBBB and the sibling series in SOURCES.md #9"),
+    ("Model parameter", "the DD band edges 8/6/4/2/1",
+     "no source exists - they are chosen. Nothing to re-check, but nothing to cite either"),
+    ("5. S&P Global", "observed default rates, 1981-2024 edition, Table 24 p.56",
+     "maalot.co.il/Publications/FTS20250331162126.pdf - take all seven from one "
+     "edition or none; the previous set was blended across editions"),
     ("6. Damodaran", "semiconductor sector beta reference of roughly 1.55-1.75",
      "check against the January industry beta table"),
     ("6. Damodaran", "sector multiple ranges used in the cross-check",

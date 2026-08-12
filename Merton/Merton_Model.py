@@ -861,6 +861,10 @@ print(f"{'='*60}\n")
 #   Stage 2 (Lifetime ECL): PD_lifetime * LGD * EAD
 #   Stage 3 (credit-impaired): LGD * EAD  (PD=1)
 # Stage assignment: DD>4 → Stage 1 | DD 2-4 → Stage 2 | DD<2 → Stage 3
+# The two cut-offs are chosen, not from IFRS 9. The standard triggers Stage 2 on
+# a significant increase in credit risk since initial recognition - a relative
+# test needing an origination date this model does not have. Read them as
+# credit-quality buckets; the README states the departure.
 # ─────────────────────────────────────────────────────────────
 
 LGD_IFRS9 = 0.45

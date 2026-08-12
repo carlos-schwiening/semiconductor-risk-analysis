@@ -16,6 +16,9 @@ RATING            = "BBB"   # Fitch, affirmed 2025-03-20 (Moody's Baa2, 2025-03-
 # ----------------------------------------------------------------------------
 # region MERTON PARAMETERS
 # ----------------------------------------------------------------------------
+# MATURITY is a model parameter, not a datum. Merton needs one date on which all
+# debt comes due; a real issuer has a ladder of maturities. One year is the
+# convention in the literature and the horizon the PD is quoted over.
 RISK_FREE_RATE    = 0.043   # 10Y US Treasury, as of 2026-06-30 (SOURCES.md #7)
 MATURITY          = 1        # Years
 # endregion
@@ -23,6 +26,11 @@ MATURITY          = 1        # Years
 # ----------------------------------------------------------------------------
 # region DCF PARAMETERS
 # ----------------------------------------------------------------------------
+# Assumed input distributions for the Monte Carlo, set per ticker from its own
+# history and sector position. None of the four comes from a publication - they
+# are this project's assumptions, and the tornado chart in Model 3 shows how much
+# each one moves the result. WACC_MEAN is a prior only: DCF_Valuation.py computes
+# the WACC actually used from CAPM.
 WACC_MEAN         = 0.10
 WACC_STD          = 0.015
 GROWTH_MEAN       = 0.05
