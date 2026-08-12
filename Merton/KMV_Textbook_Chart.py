@@ -20,6 +20,7 @@ import json
 import importlib
 import warnings
 from datetime import date
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -58,7 +59,7 @@ print(f"{'='*60}")
 # ----------------------------------------------------------------------------
 # region BLOCK 1 - HELPER FUNCTIONS & MERTON CALCULATION
 # ----------------------------------------------------------------------------
-def load_json(filename):
+def load_json(filename: str) -> Any:
     with open(os.path.join(CACHE_FOLDER, filename), "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -74,7 +75,8 @@ for tkr in TICKER_LIST:
     df_p    = pd.DataFrame(raw)
     df_p["date"] = pd.to_datetime(df_p["date"])
     prices  = df_p.sort_values("date").set_index("date")["close"]
-    log_ret = np.log(prices / prices.shift(1)).dropna()
+    # cast: pandas-stubs types np.log() on a Series as ndarray, it returns a Series
+    log_ret = cast(pd.Series, np.log(prices / prices.shift(1))).dropna()
     sigma_e = float(log_ret.std() * np.sqrt(252))
     bs      = load_json(f"{tkr}_balance-sheet-statement.json")[0]
     km      = load_json(f"{tkr}_key-metrics.json")[0]
@@ -94,7 +96,7 @@ for tkr in TICKER_LIST:
 # ----------------------------------------------------------------------------
 # region BLOCK 2 - GBM SIMULATION & CHART CREATION
 # ----------------------------------------------------------------------------
-def create_textbook_chart(tkr, params):
+def create_textbook_chart(tkr: str, params: dict[str, float]) -> go.Figure:
     """Build KMV textbook chart for one ticker. Returns fig."""
     V0     = params["V0"]
     sv     = params["sigma_V"]

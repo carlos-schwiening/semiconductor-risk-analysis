@@ -20,6 +20,7 @@ import json
 import importlib
 import warnings
 from datetime import date
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -38,9 +39,9 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)
 try:
-    from .merton_core import merton_model
+    from .merton_core import merton_model, get_rating_info
 except ImportError:  # running directly as a script (python Merton/GBM_Paths_Export.py)
-    from merton_core import merton_model  # type: ignore[import-not-found,no-redef]
+    from merton_core import merton_model, get_rating_info  # type: ignore[import-not-found,no-redef]
 
 N_PATHS = 30
 T       = 252
@@ -55,26 +56,15 @@ print(f"{'='*60}")
 # ----------------------------------------------------------------------------
 # region BLOCK 1 - HELPER FUNCTIONS & MERTON CALCULATION
 # ----------------------------------------------------------------------------
-def load_json(filename):
+def load_json(filename: str) -> Any:
     """Load a JSON cache file from CACHE_FOLDER."""
     with open(os.path.join(CACHE_FOLDER, filename), "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-_RATING_THRESHOLDS = [
-    ("AAA/AA", 8.0),
-    ("A",      6.0),
-    ("BBB",    4.0),
-    ("BB",     2.0),
-    ("B",      1.0),
-]
-
-
-def dd_to_rating(dd):
-    for label, threshold in _RATING_THRESHOLDS:
-        if dd >= threshold:
-            return label
-    return "CCC"
+def dd_to_rating(dd: float) -> str:
+    """Thin wrapper so this script cannot hold its own copy of the band edges."""
+    return str(get_rating_info(dd)[0])
 
 
 print("\nMerton calculation (all 5 tickers):")
@@ -88,7 +78,8 @@ for tkr in TICKER_LIST:
     df      = pd.DataFrame(raw)
     df["date"] = pd.to_datetime(df["date"])
     prices  = df.sort_values("date").set_index("date")["close"]
-    log_ret = np.log(prices / prices.shift(1)).dropna()
+    # cast: pandas-stubs types np.log() on a Series as ndarray, it returns a Series
+    log_ret = cast(pd.Series, np.log(prices / prices.shift(1))).dropna()
     sigma_e = float(log_ret.std() * np.sqrt(252))
     bs      = load_json(f"{tkr}_balance-sheet-statement.json")[0]
     km      = load_json(f"{tkr}_key-metrics.json")[0]

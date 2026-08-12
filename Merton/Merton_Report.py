@@ -20,6 +20,7 @@ import importlib
 import warnings
 import webbrowser
 from datetime import date
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -63,14 +64,15 @@ except ImportError:  # running directly as a script (python Merton/Merton_Report
 # stress test, sensitivity (σ_E ±30%), credit spread.
 # ─────────────────────────────────────────────────────────────
 
-def load_json(filename):
+def load_json(filename: str) -> Any:
     """Load a JSON cache file and return its contents."""
     path = os.path.join(CACHE_FOLDER, filename)
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def calculate_historical_dd(prices, log_returns, total_debt, market_cap, r, T):
+def calculate_historical_dd(prices: pd.Series, log_returns: pd.Series, total_debt: float,
+                            market_cap: float, r: float, T: float) -> pd.DataFrame:
     """Rolling Merton DD sampled every 63 trading days over 5 years."""
     cutoff    = prices.index.max() - pd.DateOffset(years=5)
     prices_5y = prices[prices.index >= cutoff]
@@ -92,14 +94,15 @@ def calculate_historical_dd(prices, log_returns, total_debt, market_cap, r, T):
     return pd.DataFrame(records).set_index("Date") if records else pd.DataFrame()
 
 
-def load_ticker_data(ticker):
+def load_ticker_data(ticker: str) -> tuple[pd.Series, pd.Series, float, float, float]:
     """Load prices, balance sheet, key metrics for one ticker from FMP cache."""
     raw       = load_json(f"{ticker}_historical-price-eod_full.json")
     df        = pd.DataFrame(raw)
     df["date"] = pd.to_datetime(df["date"])
     df        = df.sort_values("date").set_index("date")
     prices    = df["close"]
-    log_ret   = np.log(prices / prices.shift(1)).dropna()
+    # cast: pandas-stubs types np.log() on a Series as ndarray, it returns a Series
+    log_ret   = cast(pd.Series, np.log(prices / prices.shift(1))).dropna()
     sigma_e   = float(log_ret.std() * np.sqrt(252))
     bs        = load_json(f"{ticker}_balance-sheet-statement.json")[0]
     total_debt = float(bs.get("totalDebt", 0))
@@ -108,7 +111,7 @@ def load_ticker_data(ticker):
     return prices, log_ret, sigma_e, total_debt, market_cap
 
 
-def collect_all_results():
+def collect_all_results() -> list[dict[str, Any]]:
     """Run Merton analysis for all tickers and return list of result dicts."""
     all_results = []
     for ticker_name in TICKER_LIST:
@@ -274,14 +277,14 @@ _CSS = """
 """
 
 
-def _dd_cell_style(dd):
+def _dd_cell_style(dd: float) -> str:
     if dd > 6:   return 'style="background:#d4edda;"'
     elif dd > 4: return 'style="background:#fff3cd;"'
     elif dd > 2: return 'style="background:#f8d7da;"'
     else:        return 'style="background:#721c24;color:#ffffff;"'
 
 
-def _dd_chart_html(df, ticker, name):
+def _dd_chart_html(df: pd.DataFrame | None, ticker: str, name: str) -> str:
     """Plotly DD time series chart embedded as HTML snippet."""
     if df is None or df.empty:
         return f'<p style="color:#888;padding:20px;">No time series data for {ticker}.</p>'
@@ -309,7 +312,7 @@ def _dd_chart_html(df, ticker, name):
     return fig.to_html(full_html=False, include_plotlyjs=False)
 
 
-def _stress_chart_html(results):
+def _stress_chart_html(results: list[dict[str, Any]]) -> str:
     """Grouped bar chart: Bear/Base/Bull DD for all 5 tickers."""
     tickers = [r["ticker"] for r in results]
     bear_dd = [r["stress"]["Bear"]["dd"] for r in results]
@@ -353,7 +356,7 @@ def _stress_chart_html(results):
     return fig.to_html(full_html=False, include_plotlyjs=False)
 
 
-def create_html_report(results):
+def create_html_report(results: list[dict[str, Any]]) -> str:
     """Assemble the complete HTML report from all sections."""
     if not results:
         return "<html><body><p>No data available.</p></body></html>"
@@ -478,7 +481,7 @@ def create_html_report(results):
         '</nav>\n'
     )
 
-    def _section(title, content):
+    def _section(title: str, content: str) -> str:
         return (
             '<div class="section">\n'
             f'  <h2>{title}</h2>\n'

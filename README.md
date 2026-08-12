@@ -94,9 +94,30 @@ $$WACC = \frac{E}{V} \cdot K_e + \frac{D}{V} \cdot K_d \cdot (1-t)$$
 
 $$EV_{DCF} = \sum_{t=1}^{5} \frac{FCF_t}{(1+WACC)^t} + \frac{FCF_5 \cdot (1+g_2)}{(WACC - g_2) \cdot (1+WACC)^5}$$
 
-Scenario analysis stresses the Base Case along three paths: Bear (`WACC` +1.5%, $g_1$ −2%, `FCF` ×0.85), Base (unchanged), and Bull (`WACC` −1%, $g_1$ +2%, `FCF` ×1.15). A full Peer Group loop computes `WACC`, DCF value, and upside for all five tickers independently, and a Multiples Cross-Check benchmarks EV/EBITDA, P/E, and EV/Sales against semiconductor sector norms (Damodaran, Jan 2025). The two methods deliberately use different bases and should not be read as directly comparable: the DCF normalizes free cash flow over five years to smooth the cycle, while the multiples are computed on the most recent fiscal year. In a trough year that inflates them sharply — MCHP's P/E of 173x reflects collapsed trailing earnings, not a 173-year payback expectation. The cross-check is therefore a sanity check on current market pricing, not a second valuation.
+Scenario analysis stresses the Base Case along three paths, and a peer loop runs `WACC`, DCF value and upside for all five tickers independently:
 
-Across the four tickers with a positive Base Case valuation, the present value of the terminal value (Phase 2) makes up 57%–65% of total EV_DCF — MPWR 56.9%, ON 60.1%, QCOM 61.3%, MCHP 65.4% (INTC's Base Case EV is structurally negative, so a terminal value share is not meaningful there). Varying the terminal growth rate $g_2$ by ±1% around the Base Case (2.5%) shifts implied value per share by roughly ±3–4% for MPWR up to ±8–10% for MCHP across the five tickers. This sensitivity is inversely related to each ticker's WACC-g₂ spread: MPWR's high 17.2% WACC creates a wide buffer against terminal growth assumptions, while MCHP's lower 12.0% WACC leaves less room, amplifying the impact of any change in g₂. Because more than half of every ticker's enterprise value rests on a single long-run growth assumption — one that by construction cannot be observed or back-tested over a short horizon — these DCF valuations are structurally dependent on a parameter with limited empirical anchoring, and should be read as scenario-sensitive estimates rather than precise point values.
+| Scenario | `WACC` | Growth $g_1$ | `FCF` |
+|----------|--------|--------------|-------|
+| Bear | +1.5pp | −2pp | ×0.85 |
+| Base | unchanged | unchanged | unchanged |
+| Bull | −1.0pp | +2pp | ×1.15 |
+
+A multiples cross-check benchmarks EV/EBITDA, P/E and EV/Sales against sector norms (Damodaran, Jan 2025).
+
+**Reading the DCF and the multiples as two valuations is the mistake to avoid.** They use different bases on purpose: the DCF normalizes free cash flow over five years to smooth the cycle, the multiples are computed on the most recent fiscal year. In a trough year that inflates them sharply — MCHP's P/E of 173x reflects collapsed trailing earnings, not a 173-year payback. The cross-check tests current market pricing, not the DCF.
+
+**More than half of every valuation rests on the terminal value.** Phase 2's share of `EV_DCF`:
+
+| Ticker | Terminal share | `WACC` |
+|--------|---------------:|-------:|
+| MPWR | 56.9% | 17.2% |
+| ON | 60.1% | 14.0% |
+| QCOM | 61.3% | 13.7% |
+| MCHP | 65.4% | 12.0% |
+
+INTC is absent because its Base Case EV is structurally negative, which makes a terminal share meaningless rather than merely unavailable.
+
+Moving $g_2$ by ±1pp around the 2.5% Base Case shifts value per share by roughly ±3–4% (MPWR) to ±8–10% (MCHP). The spread tracks `WACC` − $g_2$: MPWR's 17.2% `WACC` buys a wide buffer, MCHP's 12.0% leaves little. A long-run growth rate cannot be observed or back-tested over any horizon available here, so these are scenario-sensitive estimates and not point values.
 
 | Ticker | Company | `WACC` | Beta | `FCF` Normalized (Bn) | DCF Value/Share | Market Price | Upside |
 |--------|---------|-----:|-----:|--------------------:|----------------:|-------------:|-------:|
@@ -198,16 +219,14 @@ The Convergence Test confirms `VaR` 99% stabilizes beyond 5,000 simulations: the
 
 `FCF` uncertainty dominates, followed by `WACC`. The tornado runs without the macro regime overlay in order to isolate the four input parameters, so its base `VaR` 99% of 72.2% differs from the 84.6% reported above — read the swings as relative contributions, not as deltas on the headline figure.
 
-Each parameter's distribution shape reflects a specific assumption about its empirical behavior rather than a default choice. `WACC` uses a Normal distribution because its underlying components (cost of equity, cost of debt) are approximately symmetric around their expected value with no known skew — the standard approach in practice. $g_1$ uses a Triangular distribution, deliberately chosen because the available information is a plausible range (0% floor, no negative growth assumed) and a most-likely value rather than a fully estimated distribution shape — the 12% ceiling reflects historical semiconductor sector growth rates. `FCF` uses a Log-Normal distribution to capture the right-skew typical of cash flow shocks, where large positive surprises are more likely than symmetric extremes in either direction. $g_2$ uses a Uniform distribution between a plausible floor and ceiling close to long-run GDP growth, deliberately encoding maximum uncertainty without favoring any value within that range — the most conservative assumption available when only the bounds, not the shape, are known.
+**Each distribution shape encodes a claim about the parameter, not a default choice:**
 
-**Parameter Distributions:**
-
-| Parameter | Distribution | E[X] | P10 | P90 |
-|-----------|-------------|-----:|----:|----:|
-| `WACC` | Normal ($\sigma$ = 1.5%) | 12.0% | 10.1% | 13.9% |
-| $g_1$ (Phase 1 growth) | Triangular (0%, mode, 12%) | 5.0% | 2.4% | 9.0% |
-| `FCF` | Log-Normal ($\sigma$ = 25%) | $2.47 Bn | $1.75 Bn | $3.34 Bn |
-| $g_2$ (Terminal growth) | Uniform (1.5%–3.5%) | 2.5% | 1.7% | 3.3% |
+| Parameter | Distribution | E[X] | P10 | P90 | Why this shape |
+|-----------|-------------|-----:|----:|----:|----------------|
+| `WACC` | Normal ($\sigma$ = 1.5%) | 12.0% | 10.1% | 13.9% | Cost of equity and cost of debt are roughly symmetric around their expected value, with no known skew |
+| $g_1$ (Phase 1 growth) | Triangular (0%, mode, 12%) | 5.0% | 2.4% | 9.0% | A plausible range and a most-likely value is all that is known; the 12% ceiling is historical sector growth |
+| `FCF` | Log-Normal ($\sigma$ = 25%) | $2.47 Bn | $1.75 Bn | $3.34 Bn | Cash flow shocks skew right — large positive surprises outweigh symmetric extremes |
+| $g_2$ (Terminal growth) | Uniform (1.5%–3.5%) | 2.5% | 1.7% | 3.3% | Only the bounds are known, so no value between them is favoured |
 
 **Portfolio Risk (MCHP/ON/QCOM/MPWR, equal weight, normalized to 100):**
 
@@ -257,29 +276,19 @@ python DCF/DCF_Valuation.py --ticker MCHP
 python MCS/Monte_Carlo_Sim.py --ticker MCHP
 ```
 
-This installs the project as a package (see `pyproject.toml`), so `Merton`,
-`DCF`, `MCS`, and `Config` can be imported cleanly without path hacks.
+- `pip install -e .` installs the project as a package, so `Merton`, `DCF`, `MCS` and `Config` import without path hacks.
+- `--ticker` picks the issuer: `MCHP` | `INTC` | `ON` | `QCOM` | `MPWR`, default `MCHP`. No code editing.
+- Multi-ticker blocks ignore it. `Merton_Report.py`, the DCF peer-group comparison and the correlated Monte Carlo portfolio always run all five.
+- Generated artefacts go to `Outputs/`, which is excluded from version control.
 
-**Data cache location.** Every model reads its input from a local folder of
-cached FMP JSON files. By default the scripts look in `data/FMP_Cache/` inside
-the project. If your cache lives elsewhere, point the `FMP_CACHE_DIR`
-environment variable at it:
+**The models read a local FMP cache, never the API.** The default location is `data/FMP_Cache/` inside the project; point `FMP_CACHE_DIR` at your own if it lives elsewhere:
 
 ```bash
 export FMP_CACHE_DIR=/path/to/FMP_Cache          # macOS / Linux
 setx FMP_CACHE_DIR "D:\path\to\FMP_Cache"        # Windows, once
 ```
 
-All generated artefacts are written to `Outputs/` inside the project and are
-excluded from version control.
-
-Each script is self-contained and runs against a local FMP cache. Switch the
-active ticker via `--ticker` (`MCHP` | `INTC` | `ON` | `QCOM` | `MPWR`,
-defaults to `MCHP`) — no code editing needed. `Merton_Report.py` and the
-other multi-ticker scripts process all five tickers regardless of `--ticker`;
-`DCF_Valuation.py`'s peer-group comparison block and `Monte_Carlo_Sim.py`'s
-correlated portfolio simulation likewise always include all five tickers
-alongside the `--ticker`-selected one.
+That is not only a convenience. FMP's free tier answers the price and statement endpoints with HTTP 402, so a clone without a cache cannot rebuild one — the cached JSON is the data source, not a copy of it. Reproducing these figures from scratch needs a paid key.
 
 ---
 
@@ -302,30 +311,29 @@ python verify.py            # constants, configuration, structural facts
 python verify.py --full     # also re-runs the models over the cached data
 ```
 
-A number typed into a README has no connection to the code that produced it, and
-goes stale silently. This README claimed 51 tests for months after the suite had
-grown to 85 — nothing noticed, because nothing was checking.
+`verify.py` reads the published values *out of this file* rather than restating
+them, so a claim cannot quietly agree with itself. With `--full` and
+`FMP_CACHE_DIR` set it re-runs the Merton model per ticker and checks the **Key
+Results** Distance to Default figures against freshly computed ones.
 
-`verify.py` recomputes what can be recomputed and compares against what this
-document says. With `--full` and `FMP_CACHE_DIR` set it re-runs the Merton model
-per ticker and checks the Distance to Default figures in **Key Results** against
-freshly computed ones. It reads the published values *out of this file* rather
-than restating them, so a claim cannot quietly agree with itself.
+A number typed into a README has no connection to the code that produced it and
+goes stale silently. This one claimed 51 tests for months after the suite had
+grown to 85. Four of the five agency ratings were wrong for longer than that.
+Neither was noticed, because nothing was checking.
 
 A mismatch is a **finding, not an annoyance**: either the source moved or the
 code did, and which one has to be established before either number is corrected.
 
-Three figures are named as **not checkable by code** and printed at the end of
-every run — the S&P observed default rates and the two Damodaran sector
-references come from outside publications and have to be re-checked by hand, so
-they are never silently assumed current.
+Four figures are named as **not checkable by code** and printed after every run —
+the agency ratings, the S&P observed default rates and the two Damodaran sector
+references all originate outside this repository.
 
 ## Tests & Continuous Integration
 
 [GitHub Actions](.github/workflows/ci.yml) runs on every push to `main`:
 
 - **85 tests** (`python -m pytest`) over the calculation modules. Deterministic functions are checked against closed-form results — with zero growth the DCF must collapse to `FCF / WACC`, and enterprise value must not depend on how the cash flows are split between forecast and terminal phase. Stochastic functions are tested on properties instead of fixed values: reproducibility under a fixed seed, correct ordering of the output range, wider dispersion under wider inputs. The Monte Carlo tests assert impossibilities rather than values — a loss above 100% of the invested amount, a conditional VaR below its own VaR, a scenario the model could not evaluate counted as a total loss.
-- **mypy** across all three model entry points and their core modules. `mypy.ini` sets `disallow_untyped_defs`, because mypy otherwise skips the bodies of unannotated functions — a green run without that flag says considerably less than it appears to.
+- **mypy** across every Python file in `Merton/`, `DCF/` and `MCS/`, plot scripts included. `mypy.ini` sets `disallow_untyped_defs`, because mypy otherwise skips the bodies of unannotated functions — a green run without that flag says considerably less than it appears to.
 
 Both run in a clean environment on Ubuntu with Python 3.12, so a dependency that happens to be installed locally cannot mask a missing entry in `pyproject.toml`.
 
@@ -333,9 +341,12 @@ Both run in a clean environment on Ubuntu with Python 3.12, so a dependency that
 
 ## Data
 
-Price history, balance sheet, income statement, cash flow, and key metrics are sourced from the Financial Modeling Prep (FMP) API (`/stable/` endpoints) and cached locally as JSON files before processing. No API key is stored in this repository — the key is read from a local `Config/Api_keys.py` file excluded via `.gitignore`. The S&P 500 price series used for beta estimation is cached as `SP500_historical-price-eod_full.json`.
+- **FMP** (`/stable/` endpoints) — price history, balance sheet, income statement, cash flow, key metrics. Cached as JSON before processing.
+- **S&P 500** price series for beta estimation, cached as `SP500_historical-price-eod_full.json`.
+- **SEC EDGAR** — the agency ratings, where the issuer states them in its own 10-K.
+- **No API key in this repository.** It is read from `Config/Api_keys.py`, excluded via `.gitignore`.
 
-**[SOURCES.md](SOURCES.md)** documents every source individually — what each one is used for, a link you can open in a browser to check it yourself where one exists, and the limits that actually constrain the results (silent truncation above 5,000 rows, prices that are not dividend-adjusted, sector averages that are a plausibility yardstick rather than a correction).
+**[SOURCES.md](SOURCES.md)** covers each source on its own: what it feeds, a browser link to check it without running anything, and the limits that actually bind — silent truncation above 5,000 rows, prices that are not dividend-adjusted, sector averages that are a yardstick rather than a correction.
 
 ---
 

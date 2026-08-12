@@ -22,6 +22,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 import os
 import glob
 from datetime import date
+from typing import cast
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -296,8 +297,10 @@ print(f"Dimensions:       {CHART_WIDTH} x {CHART_HEIGHT} px @ {CHART_SCALE}x")
 # region INTERPRETATION
 # ----------------------------------------------------------------------------
 print("\n=== Interpretation ===")
-_best  = df_summary.loc[df_summary["DD"].idxmax()]
-_worst = df_summary.loc[df_summary["DD"].idxmin()]
+# cast: .loc with a scalar label returns one row, but pandas-stubs widens it to
+# Series | Any, which then blocks float() on a single cell.
+_best  = cast(pd.Series, df_summary.loc[df_summary["DD"].idxmax()])
+_worst = cast(pd.Series, df_summary.loc[df_summary["DD"].idxmin()])
 _s2    = df_summary[df_summary["ECL_Stage"] == 2]
 _s3    = df_summary[df_summary["ECL_Stage"] == 3]
 
