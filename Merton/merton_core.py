@@ -56,6 +56,10 @@ def merton_model(
 # ----------------------------------------------------------------------------
 # region RATING & CREDIT SPREAD
 # ----------------------------------------------------------------------------
+# The band edges are chosen, not calibrated. Deriving them from observed default
+# rates squeezes all of investment grade into DD 2.95-3.54, because the normal
+# tail is too thin above that. KMV answered the same wall by replacing N(-DD)
+# with an empirical default frequency - see the README.
 RATING_TABLE: list[tuple[str, float, float, int, int]] = [
     ("AAA/AA",  8.0,  float("inf"),  30,   50),
     ("A",       6.0,  8.0,           60,   90),

@@ -10,7 +10,7 @@ import os
 # ----------------------------------------------------------------------------
 COMPANY           = "Microchip Technology"
 TICKER            = "MCHP"
-RATING            = "BB+"   # agency rating, scale S&P/Fitch — agency and as-of date not recorded, see TODO in README
+RATING            = "BBB"   # Fitch, affirmed 2025-03-20 (Moody's Baa2, 2025-03-21) — SOURCES.md #8
 # endregion
 
 # ----------------------------------------------------------------------------

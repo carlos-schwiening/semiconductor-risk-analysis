@@ -36,15 +36,31 @@ The drift term is the risk-free rate $r$, not an estimated real-world asset drif
 
 IFRS 9 `ECL` integration classifies each borrower into Stage 1 ($DD$ > 4, 12-month `ECL`), Stage 2 ($DD$ 2–4, lifetime `ECL`), or Stage 3 ($DD$ < 2, `LGD` × `EAD`). This is a deliberate simplification and departs from the standard in one respect worth stating: IFRS 9 triggers Stage 2 on a *significant increase in credit risk since initial recognition* — a relative test against the exposure's own starting point — whereas absolute `DD` thresholds are used here. That trade is made knowingly: a relative test needs an origination date and a credit-risk history per exposure, which a market-data model of listed equity does not have. The staging should therefore be read as a credit-quality bucket, not as an audit-ready IFRS 9 classification. The model also produces a quarterly Rating Migration Matrix showing transition probabilities between rating buckets, an `LGD` sensitivity analysis across Bear/Base/Bull scenarios, and a five-ticker summary Excel workbook.
 
-| Ticker | Company | Distance to Default | Model Rating | Agency Rating | IFRS 9 Stage | Model Spread (bps) | Market Benchmark (bps) |
-|--------|---------|--------------------:|--------------|---------------|:-------------|-------------------:|:----------------------|
-| MCHP | Microchip Technology | 5.14 | BBB | BB+ | Stage 1 | 0.0 | 120–180 |
-| INTC | Intel Corporation | 3.65 | BB | BBB | Stage 2 | 0.6 | 250–400 |
-| ON | ON Semiconductor | 4.17 | BBB | BBB− | Stage 1 | 0.1 | 120–180 |
-| QCOM | Qualcomm | 6.52 | A | A− | Stage 1 | 0.0 | 60–90 |
-| MPWR | Monolithic Power Systems | 13.88 | AAA/AA | A | Stage 1 | 0.0 | 30–50 |
+| Ticker | Company | Distance to Default | Model Rating | IFRS 9 Stage | Model Spread (bps) | Market Benchmark (bps) |
+|--------|---------|--------------------:|--------------|:-------------|-------------------:|:----------------------|
+| MCHP | Microchip Technology | 5.14 | BBB | Stage 1 | 0.0 | 120–180 |
+| INTC | Intel Corporation | 3.65 | BB | Stage 2 | 0.6 | 250–400 |
+| ON | ON Semiconductor | 4.17 | BBB | Stage 1 | 0.1 | 120–180 |
+| QCOM | Qualcomm | 6.52 | A | Stage 1 | 0.0 | 60–90 |
+| MPWR | Monolithic Power Systems | 13.88 | AAA/AA | Stage 1 | 0.0 | 30–50 |
 
-**The rating letters are model-internal, not agency ratings.** They are a mapping of the `DD` bucket onto familiar labels, derived from equity volatility and leverage alone. Placing the agency rating beside them shows the model does not simply run more conservatively: it is *more optimistic* for four of the five and harsher only for INTC. The divergence has a structural cause — the model rewards a clean balance sheet almost mechanically, which is why MPWR's near-zero debt lands it at AAA/AA, while an agency also weighs scale, competitive position, and business risk that no equity-volatility model can observe.
+**The rating letters are model-internal, and their thresholds are chosen rather than calibrated.** The Merton model returns two numbers, `DD` and `PD` — no letters anywhere. The letters come from a lookup table in `merton_core.py` that maps `DD` bands onto familiar labels, and the band edges are round numbers: 8, 6, 4, 2, 1.
+
+That is a genuine limitation, and the reason it was not fixed is more interesting than the limitation. Calibrating the edges to observed default rates is possible in principle — invert S&P's 1981–2023 figures through `N(−DD)` — but it collapses the whole investment-grade range into `DD` 2.95 to 3.54, a span of 0.59. Above that the normal distribution calls default effectively impossible, which is exactly why `PD` 1Y prints 0.0000% for QCOM and MPWR. The Gaussian tail is too thin for the job. Moody's KMV hit the same wall and answered it by discarding `N(−DD)` in favour of an empirically estimated default frequency — a step that needs a default database, not a better threshold. The letters here are therefore readable labels on `DD` bands, not a credit opinion.
+
+### Model against the agencies
+
+| Ticker | Model | Agency | Agency source |
+|--------|-------|--------|---------------|
+| MCHP | BBB | BBB | Fitch, affirmed 2025-03-20 (Moody's Baa2, 2025-03-21) |
+| INTC | BB | BBB | S&P, cut from BBB+ in Aug 2025 — Intel states this in its own 10-K |
+| ON | BBB | BB+ | S&P; Moody's Ba1 affirmed Jan 2026 |
+| QCOM | A | A | S&P, affirmed 2024-03-08 (Moody's A2) |
+| MPWR | AAA/AA | not rated | no rated debt, and the 10-K names no agency at all |
+
+Two exact matches and two misses of one notch, in opposite directions — the model is neither systematically loose nor systematically harsh. Where it diverges the cause is structural: it rewards a clean balance sheet almost mechanically, while an agency also weighs scale, competitive position and business risk that no equity-volatility model can observe.
+
+MPWR is the row worth pausing on. With $0.02 Bn of debt it has nothing for an agency to rate, and none does — the cell is empty because the benchmark does not exist. A structural model carries no such precondition: it reads leverage and equity volatility and returns a figure whether or not the company ever issues a bond. That advantage only becomes visible once the cell is left honestly empty.
 
 **Where the model earns its keep: the five-year horizon.** The one-year `PD` is near zero for every investment-grade issuer here, which says more about the horizon than about the companies. The five-year `PD` — the same model, run at $T=5$, and the figure already driving the lifetime `ECL` — lands close to observed cumulative default rates:
 

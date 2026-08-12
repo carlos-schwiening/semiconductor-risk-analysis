@@ -10,7 +10,7 @@ import os
 # ----------------------------------------------------------------------------
 COMPANY           = "Qualcomm"
 TICKER            = "QCOM"
-RATING            = "A-"    # agency rating, scale S&P/Fitch — agency and as-of date not recorded, see TODO in README
+RATING            = "A"     # S&P, affirmed 2024-03-08 (Moody's A2) — SOURCES.md #8
 # endregion
 
 # ----------------------------------------------------------------------------

@@ -1117,12 +1117,9 @@ for _tkr in _ALL_TICKERS:
         "MarketCap_Bn":  round(_E / 1e9,     2),
         "Debt_Bn":       round(_D / 1e9,     2),
         "Rating":        _rat,
-        # The agency rating sits in the Config files but was never used. Carrying
-        # it here makes the comparison explicit: the model letters are internal,
-        # derived purely from equity volatility and leverage, and a structural
-        # model runs more conservatively than an agency, which also weighs
-        # qualitative factors the model cannot see.
-        "Rating_Agency": getattr(_cfg, "RATING", "n/a"),
+        # The benchmark the model is measured against. None means the issuer has
+        # no rated debt at all (MPWR) - an empty cell, not a missing value.
+        "Rating_Agency": getattr(_cfg, "RATING", None) or "not rated",
         "ECL_Stage":     _stage,
         "ECL_12M":       round(_m1y["pd"] * 0.45 * _D / 1e6, 4),
         "ECL_Lifetime":  round(_m5y["pd"] * 0.45 * _D / 1e6, 4),

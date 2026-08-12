@@ -121,6 +121,38 @@ def _claimed_dd(ticker: str) -> float:
 def _claimed_rating(ticker: str) -> str:
     row = _readme_headline_table().get(ticker)
     return row["rating"] if row else "?"
+
+
+def _readme_agency_table() -> dict[str, dict[str, str]]:
+    """
+    The agency comparison, parsed out of the README and anchored to its heading.
+
+    The agency rating is the one figure here no rerun can reproduce - it comes
+    from outside. Four of the five were once wrong and nothing noticed, so what
+    is checkable is at least that the document and the configs agree.
+    """
+    rows: dict[str, dict[str, str]] = {}
+    inside = False
+    for line in _readme().splitlines():
+        if line.startswith("#"):
+            inside = line.strip() == "### Model against the agencies"
+            continue
+        if not inside:
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 4 and cells[0] in TICKERS:
+            rows[cells[0]] = {"model": cells[1], "agency": cells[2]}
+    return rows
+
+
+def _claimed_agency_rating(ticker: str) -> str:
+    row = _readme_agency_table().get(ticker)
+    return row["agency"] if row else "?"
+
+
+def _claimed_model_rating_in_comparison(ticker: str) -> str:
+    row = _readme_agency_table().get(ticker)
+    return row["model"] if row else "?"
 # endregion
 
 
@@ -164,6 +196,12 @@ def _dcf_collapses_to_perpetuity() -> bool:
 def _rating_for_dd(dd: float) -> str:
     from merton_core import get_rating_info   # type: ignore[import-not-found]
     return str(get_rating_info(dd)[0])
+
+
+def _configured_agency_rating(ticker: str) -> str:
+    """None in a config means unrated, and the README must say so in words."""
+    import importlib
+    return getattr(importlib.import_module(f"Config.{ticker}"), "RATING", None) or "not rated"
 # endregion
 
 
@@ -263,6 +301,14 @@ def _dd_claim(ticker: str) -> Callable[[], float]:
     return lambda: _recomputed_dd(ticker)
 
 
+def _agency_claim(ticker: str) -> Callable[[], str]:
+    return lambda: _configured_agency_rating(ticker)
+
+
+def _comparison_model_claim(ticker: str) -> Callable[[], str]:
+    return lambda: _claimed_model_rating_in_comparison(ticker)
+
+
 def build_claims() -> list[Claim]:
     claims: list[Claim] = [
         Claim(
@@ -328,6 +374,25 @@ def build_claims() -> list[Claim]:
             compute=_rating_claim(ticker),
         ))
 
+    # The agency rating comes from outside and cannot be recomputed. What can be
+    # checked is that the two places holding it have not drifted apart, and that
+    # the comparison table quotes the same model letter as the headline table.
+    for ticker in TICKERS:
+        claims.append(Claim(
+            source="8. Agency credit ratings",
+            claim=f"{ticker}: the published agency rating matches the config",
+            document=README,
+            expected=_claimed_agency_rating(ticker),
+            compute=_agency_claim(ticker),
+        ))
+        claims.append(Claim(
+            source="Model 1 - Merton",
+            claim=f"{ticker}: both README tables quote the same model rating",
+            document=README,
+            expected=_claimed_rating(ticker),
+            compute=_comparison_model_claim(ticker),
+        ))
+
     # Expensive: re-run the model and compare against what the README prints.
     for ticker in TICKERS:
         claims.append(Claim(
@@ -345,6 +410,8 @@ def build_claims() -> list[Claim]:
 # Figures no code in this repository can recompute. Listed so they are not
 # mistaken for verified just because everything above passed.
 BY_HAND = [
+    ("8. Agency ratings", "the rating letters themselves, and whether they still hold",
+     "each row in SOURCES.md #8 carries its agency and date - re-check the oldest"),
     ("5. S&P Global", "observed cumulative default rates by rating, 1981-2023",
      "check against the current annual default and transition study"),
     ("6. Damodaran", "semiconductor sector beta reference of roughly 1.55-1.75",

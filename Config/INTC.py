@@ -10,7 +10,7 @@ import os
 # ----------------------------------------------------------------------------
 COMPANY           = "Intel Corporation"
 TICKER            = "INTC"
-RATING            = "BBB"   # agency rating, scale S&P/Fitch — agency and as-of date not recorded, see TODO in README
+RATING            = "BBB"   # S&P, cut from BBB+ 2025-08; Intel states this in its own 10-K — SOURCES.md #8
 # endregion
 
 # ----------------------------------------------------------------------------

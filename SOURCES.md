@@ -165,6 +165,46 @@ knowing about before comparing these figures to anything term-structured.
 
 ---
 
+## 8. Agency credit ratings
+
+**What for.** The benchmark in *Model against the agencies*. Without it the
+Merton letters would only be compared to themselves.
+
+**Where.** Set per ticker in `Config/{TICKER}.py` as `RATING`. `None` means the
+issuer has no rated debt — the value is absent because the rating does not
+exist, not because it is unknown.
+
+| Ticker | Rating | Agency and date |
+|--------|--------|-----------------|
+| MCHP | BBB | Fitch, affirmed 2025-03-20; Moody's cut Baa1 → Baa2 on 2025-03-21 |
+| INTC | BBB | S&P, cut from BBB+ in Aug 2025 |
+| ON | BB+ | S&P; Moody's affirmed Ba1 in Jan 2026 |
+| QCOM | A | S&P, affirmed 2024-03-08; Moody's A2 |
+| MPWR | *none* | no agency rates it |
+
+**See it yourself.** Two free routes, both without a subscription:
+- The company's own 10-K on EDGAR. Intel names its rating outright: *"In August
+  2025, a major credit rating agency downgraded our corporate credit rating from
+  BBB+ to BBB."* Microchip confirms the March 2025 downgrade but not the letter.
+- The agencies publish rating actions as press releases; S&P Global Ratings and
+  Moody's both allow free registration.
+
+**Limits that matter.**
+- **Only INTC is primary-sourced.** Intel states its rating in a filing it is
+  legally responsible for. The other three come from agency press reporting,
+  which is one step removed.
+- **Ratings move.** Each row carries its date for that reason; QCOM's is from
+  2024 and is the oldest here.
+- **Split ratings are normal.** MCHP is Baa2 at Moody's and BBB at Fitch — the
+  same credit, two scales, and the 10-K's *"downgraded by one rating agency"*
+  is only intelligible once you know both.
+- **FMP does not supply these.** Its `ratings-snapshot` endpoint returns letters
+  that look like agency ratings but are FMP's own metric scoring — it grades
+  Intel `D+`. Using it here would have put a junk grade beside an
+  investment-grade issuer.
+
+---
+
 ## Checking the numbers: `python verify.py`
 
 Run it from the project root. Without arguments it checks constants,

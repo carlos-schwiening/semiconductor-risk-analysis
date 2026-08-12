@@ -10,7 +10,7 @@ import os
 # ----------------------------------------------------------------------------
 COMPANY           = "Monolithic Power Systems"
 TICKER            = "MPWR"
-RATING            = "A"     # agency rating, scale S&P/Fitch — agency and as-of date not recorded, see TODO in README
+RATING            = None    # unrated: no rated debt, and the 10-K names no agency — SOURCES.md #8
 # endregion
 
 # ----------------------------------------------------------------------------
