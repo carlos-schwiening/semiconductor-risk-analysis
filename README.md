@@ -12,13 +12,13 @@ I chose the semiconductor sector because it sits at the intersection of cyclical
 
 ## Key Results
 
-| Ticker | Company | Model Rating | Distance to Default | DCF Value/Share | Market Price | Upside | IFRS 9 Stage |
-|--------|---------|--------------|--------------------:|----------------:|-------------:|-------:|:-------------|
-| MCHP | Microchip Technology | BBB | 5.14 | $61.03 | $87.91 | −30.6% | Stage 1 |
-| INTC | Intel Corporation | BB | 3.65 | not applicable ¹ | $107.04 | — | Stage 2 |
-| ON | ON Semiconductor | BBB | 4.17 | $56.56 | $110.17 | −48.7% | Stage 1 |
-| QCOM | Qualcomm | A | 6.52 | $100.25 | $191.20 | −47.6% | Stage 1 |
-| MPWR | Monolithic Power Systems | AAA/AA | 13.88 | $235.54 | $1,473.04 | −84.0% | Stage 1 |
+| Ticker | Company | Distance to Default | DCF Value/Share | Market Price | Upside | IFRS 9 Stage |
+|--------|---------|--------------------:|----------------:|-------------:|-------:|:-------------|
+| MCHP | Microchip Technology | 5.14 | $61.03 | $87.91 | −30.6% | Stage 1 |
+| INTC | Intel Corporation | 3.65 | not applicable ¹ | $107.04 | — | Stage 2 |
+| ON | ON Semiconductor | 4.17 | $56.56 | $110.17 | −48.7% | Stage 1 |
+| QCOM | Qualcomm | 6.52 | $100.25 | $191.20 | −47.6% | Stage 1 |
+| MPWR | Monolithic Power Systems | 13.88 | $235.54 | $1,473.04 | −84.0% | Stage 1 |
 
 ¹ INTC's normalized free cash flow is −$9.62 Bn. A DCF discounts the cash a company is expected to generate, so a negative starting point yields the present value of continued cash burn — arithmetically −$70.11 per share, or −165.5% "upside" — rather than an intrinsic value. Reporting that number as a valuation would be a category error, so the model states the limitation instead and points to the two measures that do carry information for INTC: the Merton credit model (Stage 2, `DD` = 3.65) and the multiples cross-check.
 
@@ -34,51 +34,28 @@ $$DD = \frac{\ln(V/D) + (r - \frac{1}{2}\sigma_V^2)T}{\sigma_V\sqrt{T}}$$
 
 The drift term is the risk-free rate $r$, not an estimated real-world asset drift $\mu$. That makes the resulting $PD$ a risk-neutral one, consistent with the credit spread derived from it further below; a real-world $PD$ would need an expected asset return the model does not estimate.
 
-IFRS 9 `ECL` integration classifies each borrower into Stage 1 ($DD$ > 4, 12-month `ECL`), Stage 2 ($DD$ 2–4, lifetime `ECL`), or Stage 3 ($DD$ < 2, `LGD` × `EAD`). This is a deliberate simplification and departs from the standard in one respect worth stating: IFRS 9 triggers Stage 2 on a *significant increase in credit risk since initial recognition* — a relative test against the exposure's own starting point — whereas absolute `DD` thresholds are used here. That trade is made knowingly: a relative test needs an origination date and a credit-risk history per exposure, which a market-data model of listed equity does not have. The staging should therefore be read as a credit-quality bucket, not as an audit-ready IFRS 9 classification. The model also produces a quarterly Rating Migration Matrix showing transition probabilities between rating buckets, an `LGD` sensitivity analysis across Bear/Base/Bull scenarios, and a five-ticker summary Excel workbook.
+IFRS 9 `ECL` integration classifies each borrower into Stage 1 ($DD$ > 4, 12-month `ECL`), Stage 2 ($DD$ 2–4, lifetime `ECL`), or Stage 3 ($DD$ < 2, `LGD` × `EAD`). This is a deliberate simplification and departs from the standard in one respect worth stating: IFRS 9 triggers Stage 2 on a *significant increase in credit risk since initial recognition* — a relative test against the exposure's own starting point — whereas absolute `DD` thresholds are used here. That trade is made knowingly: a relative test needs an origination date and a credit-risk history per exposure, which a market-data model of listed equity does not have. The staging should therefore be read as a credit-quality bucket, not as an audit-ready IFRS 9 classification. The model also produces a quarterly migration matrix showing transition probabilities between `DD` bands, an `LGD` sensitivity analysis across Bear/Base/Bull scenarios, and a five-ticker summary Excel workbook.
 
-| Ticker | Company | Distance to Default | Model Rating | IFRS 9 Stage | Model Spread (bps) | Market Benchmark (bps) |
-|--------|---------|--------------------:|--------------|:-------------|-------------------:|:----------------------|
-| MCHP | Microchip Technology | 5.14 | BBB | Stage 1 | 0.0 | 92–116 |
-| INTC | Intel Corporation | 3.65 | BB | Stage 2 | 0.6 | 156–222 |
-| ON | ON Semiconductor | 4.17 | BBB | Stage 1 | 0.1 | 92–116 |
-| QCOM | Qualcomm | 6.52 | A | Stage 1 | 0.0 | 59–79 |
-| MPWR | Monolithic Power Systems | 13.88 | AAA/AA | Stage 1 | 0.0 | 27–61 |
+| Ticker | Company | Distance to Default | DD Band | IFRS 9 Stage | Model Spread (bps) |
+|--------|---------|--------------------:|---------|:-------------|-------------------:|
+| MCHP | Microchip Technology | 5.14 | DD 4-6 | Stage 1 | 0.0 |
+| INTC | Intel Corporation | 3.65 | DD 2-4 | Stage 2 | 0.6 |
+| ON | ON Semiconductor | 4.17 | DD 4-6 | Stage 1 | 0.1 |
+| QCOM | Qualcomm | 6.52 | DD 6-8 | Stage 1 | 0.0 |
+| MPWR | Monolithic Power Systems | 13.88 | DD > 8 | Stage 1 | 0.0 |
 
-**The two columns above come from very different places, and the difference matters more than either number.**
+**There are no rating letters here, and that is deliberate.** An earlier version of this table mapped `DD` onto AAA/BBB/CCC labels and set them beside agency ratings. The mapping had no source — the band edges 8, 6, 4, 2, 1 were chosen, from no publication — so the comparison graded the model on a scale this project had invented.
 
-- **Market Benchmark** — external data: ICE BofA option-adjusted spreads by rating category, trailing-year low and high as of 2026-08-11 ([SOURCES.md](SOURCES.md) #9). Free from FRED, no key.
-- **Model Rating** — a model parameter with **no source at all**. The band edges are 8, 6, 4, 2, 1, and they were chosen, not taken from any publication.
+Calibrating those edges against observed default rates does not rescue it either. Inverting S&P's one-year 1981–2024 figures through `N(−DD)` collapses AA through BBB into `DD` 2.99 to 3.54, a span of 0.55, and AAA does not map at all because its observed rate is 0.00%. Above that the normal distribution calls default effectively impossible, which is exactly why `PD` 1Y prints 0.0000% for QCOM and MPWR. Moody's KMV hit the same wall and answered it by discarding `N(−DD)` for an empirically estimated default frequency — which needs a default database, not a better threshold.
 
-The Merton model returns `DD` and `PD`. No letters anywhere; a lookup table in `merton_core.py` supplies those.
+So the letters are gone and the bands are what they always were: buckets for reporting `DD`. Their edges are still chosen, but a bucket boundary is not a claim — every histogram picks its own. Estimating where default risk actually changes is the job of the companion project [credit-risk-validation](https://github.com/carlos-schwiening/credit-risk-validation), which collects realised defaults across hundreds of filers.
 
-Calibrating the edges against observed default rates is possible in principle — invert S&P's one-year 1981–2024 figures through `N(−DD)` — and useless in practice: it collapses AA through BBB into `DD` 2.99 to 3.54, a span of 0.55, and AAA does not map at all because its observed one-year rate is 0.00%. Above that band the normal distribution calls default effectively impossible, which is exactly why `PD` 1Y prints 0.0000% for QCOM and MPWR. The Gaussian tail is too thin for the job, and Moody's KMV answered the same wall by discarding `N(−DD)` for an empirically estimated default frequency.
-
-The defensible replacement is therefore not a better set of `DD` cut-offs but a mapping over the **five-year** `PD` against the S&P default study — the horizon at which this model's own figures already land in the right neighbourhood, as the table further down shows. Until that is built, the letters are readable labels on `DD` bands and not a credit opinion.
-
-### Model against the agencies
-
-**The model's own letters are deliberately not used here.** Their thresholds have no source, so scoring the model against an external benchmark on a scale this project invented would not be a test of anything. What Merton actually produces is an ordering, so the comparison is an ordering too.
-
-| Ticker | `DD` | Model rank | Agency | Agency rank | Agency source |
-|--------|-----:|-----------:|--------|------------:|---------------|
-| QCOM | 6.52 | 1 | A | 1 | S&P, affirmed 2024-03-08 (Moody's A2) |
-| MCHP | 5.14 | 2 | BBB | 2= | Fitch, affirmed 2025-03-20 (Moody's Baa2, 2025-03-21) |
-| ON | 4.17 | 3 | BB+ | 4 | S&P; Moody's Ba1 affirmed Jan 2026 |
-| INTC | 3.65 | 4 | BBB | 2= | S&P, cut from BBB+ in Aug 2025 — Intel states this in its own 10-K |
-| MPWR | 13.88 | — | not rated | — | no rated debt; the 10-K names no agency at all |
-
-Spearman rank correlation **+0.63** over the four rated issuers. Both ends agree: QCOM is the strongest credit on either view, and neither puts ON near the top.
-
-**INTC is the single disagreement, and it is the informative one.** The agencies keep it investment grade at BBB; the model ranks it last of the five. Both are defensible from what each can see — equity volatility and leverage say one thing, while an agency also weighs scale, government support, competitive position and business risk that no market-data model observes. The model is not wrong here so much as blind to a different set of facts.
-
-**With four issuers, a rank correlation of +0.63 is not evidence** (*p* = 0.37). It is an illustration. Establishing whether `DD` predicts default needs hundreds of firms and realised defaults, not five names and agency opinions — which is exactly what the companion project [credit-risk-validation](https://github.com/carlos-schwiening/credit-risk-validation) is built to do.
-
-MPWR sits outside the comparison entirely, and that is the point. With $0.02 Bn of debt it has nothing for an agency to rate, and none does — the cell is empty because the benchmark does not exist. A structural model carries no such precondition: it reads leverage and equity volatility and returns a figure whether or not the company ever issues a bond.
+The market benchmark column went with them. Market spreads are quoted per rating class, so comparing the Merton spread against one requires assigning a rating — the very step this model cannot support.
 
 **Where the model earns its keep: the five-year horizon.** The one-year `PD` is near zero for every investment-grade issuer here, which says more about the horizon than about the companies. The five-year `PD` — the same model, run at $T=5$, and the figure already driving the lifetime `ECL` — lands close to observed cumulative default rates:
 
-| Ticker | Model Rating | $PD$ 1Y (model) | $PD$ 1Y (observed) | $PD$ 5Y (model) | $PD$ 5Y (observed) |
-|--------|--------------|----------------:|-------------------:|----------------:|-------------------:|
+| Ticker | S&P class compared against | $PD$ 1Y (model) | $PD$ 1Y (observed) | $PD$ 5Y (model) | $PD$ 5Y (observed) |
+|--------|----------------------------|----------------:|-------------------:|----------------:|-------------------:|
 | MCHP | BBB | 0.0000% | 0.14% | **1.95%** | 1.36% |
 | QCOM | A | 0.0000% | 0.05% | **0.33%** | 0.39% |
 | INTC | BB | 0.0131% | 0.56% | **9.82%** | 5.75% |
@@ -87,9 +64,9 @@ MPWR sits outside the comparison entirely, and that is the point. With $0.02 Bn 
 
 *Observed = S&P Global Ratings, **2024 Annual Global Corporate Default And Rating Transition Study** (27 March 2025), Table 24 — global corporate average cumulative default rates, 1981–2024. Every figure comes from that one edition; see [SOURCES.md](SOURCES.md) #5 for why that matters. AAA and AA are listed separately there, hence the range for MPWR's bucket.*
 
-Three of the five land in the right neighbourhood at five years, which is the more meaningful validation of a structural model than any one-year figure. ON is the exception and worth naming: its five-year `PD` of 6.40% is nearly five times the BBB benchmark, so the model's own outputs disagree with each other — the rating bucket derives from the one-year `DD`, the lifetime `ECL` from the five-year `PD`, and for ON those two tell different stories. MPWR's 0.00% reflects a firm with almost no debt, where the structural model has nothing to price.
+Three of the five land in the right neighbourhood at five years, which is the more meaningful validation of a structural model than any one-year figure. ON is the exception and worth naming: its five-year `PD` of 6.40% is nearly five times the BBB benchmark, so the model's own outputs disagree with each other — the `DD` band and the IFRS 9 stage come from the one-year figure, the lifetime `ECL` from the five-year one, and for ON those two tell different stories. MPWR's 0.00% reflects a firm with almost no debt, where the structural model has nothing to price.
 
-**The model spread sits far below the market benchmark for every ticker — that gap is a result, not an error.** The theoretical spread follows from the risk-neutral $PD$ via $s = -\ln(1 - PD \cdot LGD)\,/\,T$, and at a one-year horizon the Merton $PD$ for an investment-grade issuer is vanishingly small: a $DD$ of 5.14 corresponds to a $PD$ of roughly $10^{-7}$. The structural model therefore prices almost no credit risk, while observed market spreads compensate for liquidity, recovery uncertainty, and the jump-to-default risk that a diffusion process cannot represent. This is the well-documented credit spread puzzle of structural models at short horizons. The script reports the comparison explicitly for the active ticker (`Model UNDER market range`), which is why the benchmark band is shown alongside rather than in place of the model output — the informative content of the Merton model here lies in the $DD$ ranking and the IFRS 9 staging, not in the absolute spread level.
+**The model prices almost no credit risk at a one-year horizon, and that gap is a result rather than an error.** The theoretical spread follows from the risk-neutral $PD$ via $s = -\ln(1 - PD \cdot LGD)\,/\,T$, and a $DD$ of 5.14 corresponds to a $PD$ of roughly $10^{-7}$. Observed market spreads compensate for liquidity, recovery uncertainty and jump-to-default risk that a diffusion process cannot represent — the well-documented credit spread puzzle of structural models at short horizons. The informative content of the Merton model here is the $DD$ ranking and the IFRS 9 staging, not the absolute spread level.
 
 ![KMV Asset Value Simulation](images/INTC_KMV_Textbook.png)
 
@@ -331,21 +308,21 @@ Results** Distance to Default figures against freshly computed ones.
 
 A number typed into a README has no connection to the code that produced it and
 goes stale silently. This one claimed 51 tests for months after the suite had
-grown to 85. Four of the five agency ratings were wrong for longer than that.
+grown to 88. Four of five agency ratings, since removed, were wrong for longer.
 Neither was noticed, because nothing was checking.
 
 A mismatch is a **finding, not an annoyance**: either the source moved or the
 code did, and which one has to be established before either number is corrected.
 
-Four figures are named as **not checkable by code** and printed after every run —
-the agency ratings, the S&P observed default rates and the two Damodaran sector
-references all originate outside this repository.
+Three figures are named as **not checkable by code** and printed after every run —
+the S&P observed default rates and the two Damodaran sector references all
+originate outside this repository.
 
 ## Tests & Continuous Integration
 
 [GitHub Actions](.github/workflows/ci.yml) runs on every push to `main`:
 
-- **85 tests** (`python -m pytest`) over the calculation modules. Deterministic functions are checked against closed-form results — with zero growth the DCF must collapse to `FCF / WACC`, and enterprise value must not depend on how the cash flows are split between forecast and terminal phase. Stochastic functions are tested on properties instead of fixed values: reproducibility under a fixed seed, correct ordering of the output range, wider dispersion under wider inputs. The Monte Carlo tests assert impossibilities rather than values — a loss above 100% of the invested amount, a conditional VaR below its own VaR, a scenario the model could not evaluate counted as a total loss.
+- **88 tests** (`python -m pytest`) over the calculation modules. Deterministic functions are checked against closed-form results — with zero growth the DCF must collapse to `FCF / WACC`, and enterprise value must not depend on how the cash flows are split between forecast and terminal phase. Stochastic functions are tested on properties instead of fixed values: reproducibility under a fixed seed, correct ordering of the output range, wider dispersion under wider inputs. The Monte Carlo tests assert impossibilities rather than values — a loss above 100% of the invested amount, a conditional VaR below its own VaR, a scenario the model could not evaluate counted as a total loss.
 - **mypy** across every Python file in `Merton/`, `DCF/` and `MCS/`, plot scripts included. `mypy.ini` sets `disallow_untyped_defs`, because mypy otherwise skips the bodies of unannotated functions — a green run without that flag says considerably less than it appears to.
 
 Both run in a clean environment on Ubuntu with Python 3.12, so a dependency that happens to be installed locally cannot mask a missing entry in `pyproject.toml`.
@@ -356,7 +333,6 @@ Both run in a clean environment on Ubuntu with Python 3.12, so a dependency that
 
 - **FMP** (`/stable/` endpoints) — price history, balance sheet, income statement, cash flow, key metrics. Cached as JSON before processing.
 - **S&P 500** price series for beta estimation, cached as `SP500_historical-price-eod_full.json`.
-- **SEC EDGAR** — the agency ratings, where the issuer states them in its own 10-K.
 - **No API key in this repository.** It is read from `Config/Api_keys.py`, excluded via `.gitignore`.
 
 **[SOURCES.md](SOURCES.md)** covers each source on its own: what it feeds, a browser link to check it without running anything, and the limits that actually bind — silent truncation above 5,000 rows, prices that are not dividend-adjusted, sector averages that are a yardstick rather than a correction.

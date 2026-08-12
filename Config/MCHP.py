@@ -10,7 +10,6 @@ import os
 # ----------------------------------------------------------------------------
 COMPANY           = "Microchip Technology"
 TICKER            = "MCHP"
-RATING            = "BBB"   # Fitch, affirmed 2025-03-20 (Moody's Baa2, 2025-03-21) — SOURCES.md #8
 # endregion
 
 # ----------------------------------------------------------------------------

@@ -54,37 +54,34 @@ def merton_model(
 
 
 # ----------------------------------------------------------------------------
-# region RATING & CREDIT SPREAD
+# region DD BANDS & CREDIT SPREAD
 # ----------------------------------------------------------------------------
-# Two very different kinds of number sit in this table, and conflating them is
-# what let an invented figure stand in the README for months.
+# Buckets for reporting DD, nothing more. They used to carry rating letters -
+# AAA/AA, BBB, CCC - which made a bucket boundary look like a credit opinion and
+# invited a comparison against agency ratings that the model cannot support.
 #
-# DD BANDS - a model parameter with no source. The edges 8/6/4/2/1 were chosen,
-# not taken from any publication. Calibrating them against observed default rates
-# is possible in principle and useless in practice: it squeezes all of investment
-# grade into DD 2.95-3.54, because the normal tail is too thin above that. The
-# defensible replacement is a mapping over the five-year PD against the S&P
-# default study (SOURCES.md #5), not a better set of DD cut-offs.
-#
-# SPREAD BANDS - external market data. ICE BofA option-adjusted spreads by rating
-# category, trailing-year low and high as of 2026-08-11 (SOURCES.md #9). They
-# previously read 30-50 / 60-90 / 120-180 / 250-400 / 400-650 / 800-1200 with no
-# source at all, and overstated the middle of the curve by 50 to 130 percent.
-RATING_TABLE: list[tuple[str, float, float, int, int]] = [
-    ("AAA/AA",  8.0,  float("inf"),  27,   61),
-    ("A",       6.0,  8.0,           59,   79),
-    ("BBB",     4.0,  6.0,           92,   116),
-    ("BB",      2.0,  4.0,           156,  222),
-    ("B",       1.0,  2.0,           276,  377),
-    ("CCC",     0.0,  1.0,           783,  1034),
+# The edges are still chosen rather than derived, but as bands that is no longer
+# a claim: any histogram picks its own. Estimating where default risk actually
+# changes needs observed defaults across many firms, which is a different project
+# (credit-risk-validation), not a better set of cut-offs here.
+DD_BANDS: list[tuple[str, float, float]] = [
+    ("DD > 8",  8.0,  float("inf")),
+    ("DD 6-8",  6.0,  8.0),
+    ("DD 4-6",  4.0,  6.0),
+    ("DD 2-4",  2.0,  4.0),
+    ("DD 1-2",  1.0,  2.0),
+    ("DD < 1",  0.0,  1.0),
 ]
 
+BAND_LABELS: list[str] = [label for label, _lo, _hi in DD_BANDS]
 
-def get_rating_info(dd: float) -> tuple[str, int, int]:
-    for rating, dd_min, dd_max, bps_lo, bps_hi in RATING_TABLE:
+
+def dd_band(dd: float) -> str:
+    """The reporting band a Distance to Default falls in."""
+    for label, dd_min, dd_max in DD_BANDS:
         if dd >= dd_min and (dd < dd_max or dd_max == float("inf")):
-            return rating, bps_lo, bps_hi
-    return "CCC", 800, 1200
+            return label
+    return DD_BANDS[-1][0]
 
 
 def calculate_spread(pd_val: float, T: float, lgd: float = 0.45) -> float:

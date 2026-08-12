@@ -49,9 +49,9 @@ TEXT_MUTED = "#888888"
 
 # Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)
 try:
-    from .merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE
+    from .merton_core import merton_model, dd_band, calculate_spread
 except ImportError:  # running directly as a script (python Merton/Merton_Report.py)
-    from merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE  # type: ignore[import-not-found,no-redef]
+    from merton_core import merton_model, dd_band, calculate_spread  # type: ignore[import-not-found,no-redef]
 
 # endregion
 
@@ -145,8 +145,7 @@ def collect_all_results() -> list[dict[str, Any]]:
             # Credit Spread
             base_bps  = calculate_spread(base["pd"], T) * 10000
             bear_bps  = calculate_spread(bear["pd"], T) * 10000
-            rat, bps_lo, bps_hi = get_rating_info(base["dd"])
-            puzzle_gap = bps_lo - bear_bps
+            band = dd_band(base["dd"])
 
             all_results.append({
                 "ticker":         ticker_name,
@@ -157,7 +156,7 @@ def collect_all_results() -> list[dict[str, Any]]:
                 "sigma_e":        sigma_e,
                 "market_cap":     market_cap / 1e9,
                 "debt":           total_debt / 1e9,
-                "rating":         rat,
+                "band":           band,
                 "df_time_series": df_zt,
                 "stress":         stress,
                 "sens_vol_low":   dd_vol_low,
@@ -165,9 +164,6 @@ def collect_all_results() -> list[dict[str, Any]]:
                 "vol_impact":     vol_impact,
                 "credit_base":    base_bps,
                 "credit_bear":    bear_bps,
-                "bench_lo":       bps_lo,
-                "bench_hi":       bps_hi,
-                "puzzle_gap":     puzzle_gap,
             })
             print(f"DD={base['dd']:.3f}  PD={base['pd']:.4%}")
         except Exception as e:
@@ -378,7 +374,7 @@ def create_html_report(results: list[dict[str, Any]]) -> str:
             f'<td>{r["sigma_e"]:.1%}</td>'
             f'<td>{r["market_cap"]:.1f} Bn</td>'
             f'<td>{r["debt"]:.2f} Bn</td>'
-            f'<td>{r["rating"]}</td>'
+            f'<td>{r["band"]}</td>'
             f'</tr>\n'
         )
 
@@ -433,16 +429,12 @@ def create_html_report(results: list[dict[str, Any]]) -> str:
     # ── Section 5: Credit spread table ─────────────────────
     rows_s5 = ""
     for r in sorted_res:
-        gap_str = f"{r['puzzle_gap']:+.1f} bps"
-        gap_col = "color:#C0392B;" if r["puzzle_gap"] < 0 else "color:#1B4332;"
         rows_s5 += (
             f'<tr>'
             f'<td><strong>{r["ticker"]}</strong></td>'
-            f'<td>{r["rating"]}</td>'
+            f'<td>{r["band"]}</td>'
             f'<td>{r["credit_base"]:.1f}</td>'
             f'<td>{r["credit_bear"]:.1f}</td>'
-            f'<td>{r["bench_lo"]}–{r["bench_hi"]}</td>'
-            f'<td style="{gap_col}">{gap_str}</td>'
             f'</tr>\n'
         )
 
@@ -451,12 +443,11 @@ def create_html_report(results: list[dict[str, Any]]) -> str:
         '<thead><tr>'
         '<th>Ticker</th><th>Rating</th>'
         '<th>Base Spread (bps)</th><th>Bear Spread (bps)</th>'
-        '<th>Benchmark (bps)</th><th>Puzzle Gap</th>'
+        ''
         '</tr></thead>\n'
         f'<tbody>{rows_s5}</tbody>\n</table>\n'
         '<p class="footnote">Note: The Merton model systematically underestimates credit spreads '
-        'for investment-grade issuers (Credit Spread Puzzle). '
-        'Puzzle Gap = Benchmark Low − Bear Spread.</p>'
+        'for investment-grade issuers - the Credit Spread Puzzle.</p>'
     )
 
     # ── Assemble full HTML ────────────────────────────────────
@@ -548,7 +539,7 @@ if results:
     print(f">>> {max_impact['ticker']} reacts most strongly to volatility swings "
           f"(ΔDD = {max_impact['vol_impact']:.3f} at ±30% σ_E).")
 
-    all_neg_gap = [r for r in results if r["puzzle_gap"] > 50]
+    all_neg_gap = [r for r in results if r["credit_base"] < 1.0]
     if all_neg_gap:
         tickers_puzzle = ", ".join(r["ticker"] for r in all_neg_gap)
         print(f">>> Credit Spread Puzzle visible for {tickers_puzzle}: "
@@ -572,7 +563,6 @@ print("Bull scenario    = E +25%, D −10%, σ_E −20% (upswing)")
 print("sens_vol_low/high= DD at σ_E −30% / +30% (sensitivity analysis)")
 print("vol_impact       = |DD_vol_high − DD_vol_low| (total impact range)")
 print("credit_base/bear = Merton spread in bps under Base/Bear scenario")
-print("bench_lo/hi      = Market benchmark spread range (bps) by rating class")
-print("puzzle_gap       = Benchmark_low − Bear_Spread (Credit Spread Puzzle)")
+print("band             = DD reporting band, from merton_core.dd_band()")
 print("LGD              = Loss Given Default = 45% (assumption)")
 # endregion

@@ -10,7 +10,6 @@ import os
 # ----------------------------------------------------------------------------
 COMPANY           = "Intel Corporation"
 TICKER            = "INTC"
-RATING            = "BBB"   # S&P, cut from BBB+ 2025-08; Intel states this in its own 10-K — SOURCES.md #8
 # endregion
 
 # ----------------------------------------------------------------------------

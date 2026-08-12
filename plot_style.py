@@ -44,11 +44,11 @@ TICK_FONT       = dict(family="Inter, Arial, sans-serif", size=10, color="#6B728
 
 # ── Ticker Colors ──────────────────────────────────────────────
 TICKER_COLORS = {
-    "MCHP": "#1B4332",   # BBB  — dark green
+    "MCHP": "#1B4332",   # dark green
     "INTC": "#C0392B",   # BB   — red
-    "ON":   "#2D6A4F",   # BBB  — green
+    "ON":   "#2D6A4F",   # green
     "QCOM": "#1D6FD8",   # A    — blue
-    "MPWR": "#0B1220",   # AAA  — navy
+    "MPWR": "#0B1220",   # navy
 }
 
 # ── IFRS 9 Stage Colors ────────────────────────────────────────

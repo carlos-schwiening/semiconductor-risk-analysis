@@ -14,7 +14,7 @@ Select the active company via --ticker (default: MCHP | INTC | ON | QCOM | MPWR)
   Block 7: Visualization (Stock Price + Rolling Volatility)
   Block 8: Excel Export
   Block 9: IFRS 9 ECL Integration
-  Block 10: Rating Migration Matrix
+  Block 10: DD Band Migration Matrix
   Block 11: LGD Sensitivity
   Block 12: Excel Export (Portfolio / Dashboard feed)
 """
@@ -75,9 +75,9 @@ BG     = "#FFFFFF"; TEXT = "#1A1A1A"; BORDER = "#E5E5E5"; TEXT_MUTED = "#9CA3AF"
 
 # Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)
 try:
-    from .merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE
+    from .merton_core import merton_model, dd_band, calculate_spread, BAND_LABELS
 except ImportError:  # running directly as a script (python Merton/Merton_Model.py)
-    from merton_core import merton_model, get_rating_info, calculate_spread, RATING_TABLE  # type: ignore[import-not-found,no-redef]
+    from merton_core import merton_model, dd_band, calculate_spread, BAND_LABELS  # type: ignore[import-not-found,no-redef]
 
 
 class MarketData(TypedDict):
@@ -455,11 +455,13 @@ SCENARIOS: dict[str, dict[str, Any]] = {
 }
 
 
-def rating_assessment(dd: float) -> str:
-    if dd > 6:   return "AA/A  — very safe"
-    elif dd > 4: return "BBB   — investment grade"
-    elif dd > 2: return "BB/B  — sub-investment grade"
-    else:        return "CCC   — critical"
+def dd_assessment(dd: float) -> str:
+    """A plain reading of the DD level. No rating letters: the model does not
+    produce a credit opinion, and borrowing the vocabulary implied one."""
+    if dd > 6:   return "far from default"
+    elif dd > 4: return "comfortable"
+    elif dd > 2: return "thin cushion"
+    else:        return "critical"
 
 
 stress_results: dict[str, dict[str, Any]] = {}
@@ -470,15 +472,15 @@ for scen, params in SCENARIOS.items():
         "DD":     res["dd"],
         "PD":     res["pd"],
         "EL":     res["el"],
-        "Rating": rating_assessment(res["dd"]),
+        "DD_Read": dd_assessment(res["dd"]),
         "color":  params["color"],
     }
 
 print(f"\n=== Stress Test Scenarios ===")
-print(f"{'Scenario':<8} {'V (Bn)':>9} {'DD':>8} {'PD':>10} {'EL (Mn)':>10}  Rating")
+print(f"{'Scenario':<8} {'V (Bn)':>9} {'DD':>8} {'PD':>10} {'EL (Mn)':>10}  Reading")
 print("-" * 72)
 for scen, sd in stress_results.items():
-    print(f"{scen:<8} {sd['V']/1e9:>9.2f} {sd['DD']:>8.4f} {sd['PD']:>10.4%} {sd['EL']/1e6:>10.2f}  {sd['Rating']}")
+    print(f"{scen:<8} {sd['V']/1e9:>9.2f} {sd['DD']:>8.4f} {sd['PD']:>10.4%} {sd['EL']/1e6:>10.2f}  {sd['DD_Read']}")
 
 
 def create_stress_chart(stress_results: dict[str, dict[str, Any]], output_path: str) -> str:
@@ -558,7 +560,7 @@ df_stress = pd.DataFrame([
         "DD":       stress_results[scen]["DD"],
         "PD":       stress_results[scen]["PD"],
         "EL_Mio":   stress_results[scen]["EL"] / 1e6,
-        "Rating":   stress_results[scen]["Rating"],
+        "DD_Read":  stress_results[scen]["DD_Read"],
     }
     for scen in SCENARIOS
 ])
@@ -572,19 +574,17 @@ df_stress = pd.DataFrame([
 # ─────────────────────────────────────────────────────────────
 # Theoretical spread from Merton PD and LGD=45%:
 #   s = -ln(1 − PD · LGD) / T  →  in basis points × 10000
-# Compared against market benchmarks by DD-based rating class.
+# The model spread only. There is no benchmark band here: market spreads are
+# quoted per rating class, and this model does not assign one.
 # ─────────────────────────────────────────────────────────────
 
-basis_spread_bps            = calculate_spread(merton["pd"], T) * 10000
-basis_rating, basis_lo, basis_hi = get_rating_info(merton["dd"])
+basis_spread_bps = calculate_spread(merton["pd"], T) * 10000
+basis_band       = dd_band(merton["dd"])
 
 print(f"\n=== Credit Spread Analysis ===")
 print(f"Merton PD:                {merton['pd']:.4%}")
 print(f"Theoretical Spread:      {basis_spread_bps:.1f} bps")
-print(f"Rating Class (DD-Based):  {basis_rating}")
-print(f"Market Benchmark Spread:  {basis_lo}-{basis_hi} bps")
-_valuation_flag_basis = "UNDER" if basis_spread_bps < basis_lo else ("OVER" if basis_spread_bps > basis_hi else "WITHIN")
-print(f"Valuation:                Model {_valuation_flag_basis} market range")
+print(f"DD Band:                  {basis_band}")
 
 print(f"\n{'Scenario':<8} {'PD':>10} {'Spread (bps)':>14} {'Benchmark':<22} {'Valuation':>10}")
 print("-" * 68)
@@ -593,33 +593,27 @@ spread_records = []
 for scen in ["Bear", "Base", "Bull"]:
     sd          = stress_results[scen]
     s_bps       = calculate_spread(sd["PD"], T) * 10000
-    rat, lo, hi = get_rating_info(sd["DD"])
-    valuation_flag = "UNDER" if s_bps < lo else ("OVER" if s_bps > hi else "WITHIN")
-    bench_str   = f"{rat}: {lo}-{hi} bps"
-    print(f"{scen:<8} {sd['PD']:>10.4%} {s_bps:>14.1f} {bench_str:<22} {valuation_flag:>10}")
+    band        = dd_band(sd["DD"])
+    print(f"{scen:<8} {sd['PD']:>10.4%} {s_bps:>14.1f} {band:<12}")
     spread_records.append({
         "Scenario":     scen,
         "DD":           sd["DD"],
         "PD":           sd["PD"],
         "Spread_bps":   s_bps,
-        "Rating":       rat,
-        "Benchmark_lo": lo,
-        "Benchmark_hi": hi,
-        "Valuation":    valuation_flag,
+        "DD_Band":      band,
     })
 
 df_credit = pd.DataFrame(spread_records)
 
 
 def create_spread_chart(df_credit: pd.DataFrame, output_path: str) -> str:
-    """Grouped bar chart: model spread vs. benchmark midpoint with error bars."""
+    """Bar chart of the model spread per scenario.
+
+    The market benchmark bars are gone with the rating letters: market spreads
+    are quoted per rating class, and this model no longer assigns one.
+    """
     scenarios    = df_credit["Scenario"].tolist()
     spreads      = df_credit["Spread_bps"].tolist()
-    bench_lo     = df_credit["Benchmark_lo"].tolist()
-    bench_hi     = df_credit["Benchmark_hi"].tolist()
-    bench_mid    = [(lo + hi) / 2 for lo, hi in zip(bench_lo, bench_hi)]
-    bench_err_hi = [(hi - mid) for hi, mid in zip(bench_hi, bench_mid)]
-    bench_err_lo = [(mid - lo) for mid, lo in zip(bench_mid, bench_lo)]
 
     fig = go.Figure()
 
@@ -632,29 +626,11 @@ def create_spread_chart(df_credit: pd.DataFrame, output_path: str) -> str:
         textposition="outside",
     ))
 
-    fig.add_trace(go.Bar(
-        x=scenarios, y=bench_mid,
-        name="Market Benchmark (Mid)",
-        marker_color=GRAY_1,
-        opacity=0.55,
-        error_y=dict(
-            type="data",
-            array=bench_err_hi,
-            arrayminus=bench_err_lo,
-            visible=True,
-            color=GRAY_1,
-            thickness=2,
-            width=8,
-        ),
-        text=[f"{lo}–{hi} bps" for lo, hi in zip(bench_lo, bench_hi)],
-        textposition="outside",
-    ))
-
     fig.update_layout(
         **LAYOUT,
         title=dict(
             text=(f"{COMPANY} — Credit Spread Analysis<br>"
-                  f"<sup>Merton Spread vs. Market Benchmark | s = −ln(1 − PD·LGD) / T</sup>"),
+                  f"<sup>s = −ln(1 − PD·LGD) / T, by scenario</sup>"),
             font=dict(size=15, color="#0B1220"), x=0.0,
         ),
         barmode="group",
@@ -909,33 +885,21 @@ print(f"{'ECL (current stage, Mn)':<30} {ecl_used/1e6:>14.3f}")
 
 
 # ----------------------------------------------------------------------------
-# region BLOCK 10 - RATING MIGRATION MATRIX
+# region BLOCK 10 - DD BAND MIGRATION MATRIX
 # ----------------------------------------------------------------------------
 # ─────────────────────────────────────────────────────────────
-# Derives rating per quarter from the historical DD time series.
-# Counts transitions between ratings and shows
+# Derives the DD band per quarter from the historical DD time series.
+# Counts transitions between bands and shows
 # transition probabilities as a matrix + heatmap.
 # ─────────────────────────────────────────────────────────────
 
-RATINGS_ORDERED = ["AAA/AA", "A", "BBB", "BB", "B", "CCC"]
-
-
-def dd_to_rating(dd: float) -> str:
-    if dd >= 8:   return "AAA/AA"
-    elif dd >= 6: return "A"
-    elif dd >= 4: return "BBB"
-    elif dd >= 2: return "BB"
-    elif dd >= 1: return "B"
-    else:         return "CCC"
-
-
 df_dd_rated = df_dd_hist.copy()
-df_dd_rated["Rating"] = df_dd_rated["DD"].apply(dd_to_rating)
+df_dd_rated["DD_Band"] = df_dd_rated["DD"].apply(dd_band)
 
-migration_counts = pd.DataFrame(0, index=RATINGS_ORDERED, columns=RATINGS_ORDERED)
-ratings_list = df_dd_rated["Rating"].tolist()
-for i in range(len(ratings_list) - 1):
-    migration_counts.loc[ratings_list[i], ratings_list[i + 1]] += 1
+migration_counts = pd.DataFrame(0, index=BAND_LABELS, columns=BAND_LABELS)
+band_list = df_dd_rated["DD_Band"].tolist()
+for i in range(len(band_list) - 1):
+    migration_counts.loc[band_list[i], band_list[i + 1]] += 1
 
 row_sums = migration_counts.sum(axis=1).replace(0, 1)
 migration_probs = migration_counts.div(row_sums, axis=0)
@@ -953,8 +917,8 @@ def create_migration_heatmap(migration_probs: pd.DataFrame, output_path: str) ->
 
     fig = go.Figure(go.Heatmap(
         z=z_vals,
-        x=RATINGS_ORDERED,
-        y=RATINGS_ORDERED,
+        x=BAND_LABELS,
+        y=BAND_LABELS,
         colorscale=[[0, BG], [1, BLUE_1]],
         text=text_vals,
         texttemplate="%{text}",
@@ -968,8 +932,8 @@ def create_migration_heatmap(migration_probs: pd.DataFrame, output_path: str) ->
                   f"<sup>Quarterly DD Time Series (5 Years) | Transition Probabilities</sup>"),
             font=dict(size=15, color="#0B1220"), x=0.0,
         ),
-        xaxis=dict(title="To Rating", showgrid=False, showline=True, linecolor=BORDER),
-        yaxis=dict(title="From Rating", showgrid=False, showline=True, linecolor=BORDER,
+        xaxis=dict(title="To band", showgrid=False, showline=True, linecolor=BORDER),
+        yaxis=dict(title="From band", showgrid=False, showline=True, linecolor=BORDER,
                    autorange="reversed"),
         height=480,
         margin=dict(l=80, r=40, t=110, b=80),
@@ -1104,7 +1068,7 @@ for _tkr in _ALL_TICKERS:
     _m    = merton_model(_E, _D, _r, _T,  _se)
     _m1y  = merton_model(_E, _D, _r, 1.0, _se)
     _m5y  = merton_model(_E, _D, _r, 5.0, _se)
-    _rat, _, _ = get_rating_info(_m["dd"])
+    _band = dd_band(_m["dd"])
     _stage = 1 if _m["dd"] > 4 else (2 if _m["dd"] >= 2 else 3)
     _summary_rows.append({
         "Ticker":        _tkr,
@@ -1120,10 +1084,7 @@ for _tkr in _ALL_TICKERS:
         "sigma_E":       round(_se,           4),
         "MarketCap_Bn":  round(_E / 1e9,     2),
         "Debt_Bn":       round(_D / 1e9,     2),
-        "Rating":        _rat,
-        # The benchmark the model is measured against. None means the issuer has
-        # no rated debt at all (MPWR) - an empty cell, not a missing value.
-        "Rating_Agency": getattr(_cfg, "RATING", None) or "not rated",
+        "DD_Band":       _band,
         "ECL_Stage":     _stage,
         "ECL_12M":       round(_m1y["pd"] * 0.45 * _D / 1e6, 4),
         "ECL_Lifetime":  round(_m5y["pd"] * 0.45 * _D / 1e6, 4),
@@ -1133,8 +1094,8 @@ df_summary_csv = pd.DataFrame(_summary_rows)
 
 # 2. DD_TimeSeries — active ticker (MCHP)
 df_dd_csv = df_dd_hist.copy().reset_index()
-df_dd_csv["Rating"] = df_dd_csv["DD"].apply(dd_to_rating)
-df_dd_csv.columns  = ["Date", "DD", "PD", "Price", "sigma_E", "Rating"]
+df_dd_csv["DD_Band"] = df_dd_csv["DD"].apply(dd_band)
+df_dd_csv.columns  = ["Date", "DD", "PD", "Price", "sigma_E", "DD_Band"]
 
 # 3. Stress_Test
 df_stress_csv = df_stress.copy()
@@ -1148,13 +1109,13 @@ df_stress_csv["Spread_bps"] = spreads_col
 
 # 5. Rating_Migration
 migration_flat = []
-for from_rating in RATINGS_ORDERED:
-    for to_rating in RATINGS_ORDERED:
+for from_rating in BAND_LABELS:
+    for to_rating in BAND_LABELS:
         count = int(cast(int, migration_counts.loc[from_rating, to_rating]))
         prob  = round(float(cast(float, migration_probs.loc[from_rating, to_rating])), 4)
         migration_flat.append({
-            "From_Rating":  from_rating,
-            "To_Rating":    to_rating,
+            "From_Band":    from_rating,
+            "To_Band":      to_rating,
             "Count":        count,
             "Probability":  prob,
         })
@@ -1177,8 +1138,8 @@ for _tkr in _ALL_TICKERS:
     _T_t   = _cfg_t.MATURITY
     _df_t  = calculate_historical_dd(_pr_t, _lr_t, _D_t, _E_t, _r_t, _T_t).reset_index()
     _df_t["Ticker"] = _tkr
-    _df_t["Rating"] = _df_t["DD"].apply(dd_to_rating)
-    _df_t  = _df_t[["Date", "Ticker", "DD", "PD", "Price", "Rating"]]
+    _df_t["DD_Band"] = _df_t["DD"].apply(dd_band)
+    _df_t  = _df_t[["Date", "Ticker", "DD", "PD", "Price", "DD_Band"]]
     _dd_alle_rows.append(_df_t)
 
 df_dd_alle = pd.concat(_dd_alle_rows, ignore_index=True).sort_values(["Date", "Ticker"]).reset_index(drop=True)
@@ -1199,7 +1160,7 @@ def export_excel_portfolio(output_path: str) -> str:
         df_dd_csv.to_excel(writer,        sheet_name="DD_TimeSeries",     index=False)
         df_stress_csv.to_excel(writer,    sheet_name="Stress_Test",       index=False)
         df_lgd.to_excel(writer,           sheet_name="LGD_Sensitivity",   index=False)
-        df_migration_csv.to_excel(writer, sheet_name="Rating_Migration",  index=False)
+        df_migration_csv.to_excel(writer, sheet_name="DD_Band_Migration",  index=False)
         df_dd_alle.to_excel(writer,       sheet_name="DD_TimeSeries_All", index=False)
         df_dd_pivot.to_excel(writer,      sheet_name="DD_Pivot",          index=False)
     return excel_path
@@ -1264,9 +1225,9 @@ print(f">>> IFRS 9 classification: {stage_label[ifrs9_stage]} — "
       f"ECL = {ecl_used/1e6:.3f} Mn USD "
       f"({'12M-PD' if ifrs9_stage == 1 else 'Lifetime-PD' if ifrs9_stage == 2 else 'LGD × EAD, PD=1'} basis).")
 
-dominant_rating = df_dd_rated["Rating"].value_counts().index[0]
-print(f">>> Dominant historical rating (5Y quarters): {dominant_rating} "
-      f"({df_dd_rated['Rating'].value_counts().iloc[0]} of {len(df_dd_rated)} observations).")
+dominant_band = df_dd_rated["DD_Band"].value_counts().index[0]
+print(f">>> Dominant historical DD band (5Y quarters): {dominant_band} "
+      f"({df_dd_rated['DD_Band'].value_counts().iloc[0]} of {len(df_dd_rated)} observations).")
 # endregion
 
 
@@ -1296,8 +1257,8 @@ print("ECL_Lifetime   = Expected Credit Loss Stage 2 = PD_lifetime * LGD * EAD")
 print("ECL_Stage3     = Expected Credit Loss Stage 3 = LGD * EAD (PD=1)")
 print("ifrs9_stage    = IFRS 9 stage assignment (1/2/3) based on DD")
 print("ecl_used       = ECL to apply, depending on the stage assignment")
-print("RATINGS_ORDERED= Rating classes for migration: AAA/AA, A, BBB, BB, B, CCC")
-print("migration_counts = Counter matrix: how often a rating moved from X to Y (quarters)")
+print("BAND_LABELS    = DD bands used for migration: >8, 6-8, 4-6, 2-4, 1-2, <1")
+print("migration_counts = Counter matrix: how often DD moved from band X to Y (quarters)")
 print("migration_probs  = Transition probabilities P(From → To)")
 print("df_lgd         = LGD sensitivity table: LGD × Scenario × EL/Spread/ECL")
 print("export_excel_portfolio() = Writes all cross-ticker / dashboard datasets to one .xlsx")

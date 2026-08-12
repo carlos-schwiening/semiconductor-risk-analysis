@@ -108,86 +108,20 @@ def _readme_headline_table() -> dict[str, dict[str, str]]:
         if not inside:
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) >= 8 and cells[0] in TICKERS:
-            rows[cells[0]] = {"rating": cells[2], "dd": cells[3], "stage": cells[7]}
+        if len(cells) == 7 and cells[0] in TICKERS:
+            rows[cells[0]] = {"dd": cells[2], "stage": cells[6]}
     return rows
 
 
-def _claimed_dd(ticker: str) -> float:
-    row = _readme_headline_table().get(ticker)
-    return float(row["dd"]) if row else float("nan")
-
-
-def _claimed_rating(ticker: str) -> str:
-    row = _readme_headline_table().get(ticker)
-    return row["rating"] if row else "?"
-
-
-def _readme_agency_table() -> dict[str, dict[str, str]]:
+def _readme_model1_table() -> dict[str, dict[str, str]]:
     """
-    The agency comparison, parsed out of the README and anchored to its heading.
+    The Merton table, which is where the DD band is published.
 
-    The agency rating is the one figure here no rerun can reproduce - it comes
-    from outside. Four of the five were once wrong and nothing noticed, so what
-    is checkable is at least that the document and the configs agree.
+    Anchored to its own heading and stopped at the end of the first table: two
+    other tables in this section also start with a ticker, and an unanchored
+    match let the wrong one win silently once already.
     """
     rows: dict[str, dict[str, str]] = {}
-    inside = False
-    for line in _readme().splitlines():
-        if line.startswith("#"):
-            inside = line.strip() == "### Model against the agencies"
-            continue
-        if not inside:
-            continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) == 6 and cells[0] in TICKERS:
-            rows[cells[0]] = {"dd": cells[1], "rank": cells[2], "agency": cells[3]}
-        elif rows and not line.startswith("|"):
-            # Stop at the end of the first table. The PD table further down also
-            # has six columns and starts with a ticker, and without this it won
-            # silently - the same trap this file's headline parser was already
-            # anchored against.
-            break
-    return rows
-
-
-def _claimed_agency_rating(ticker: str) -> str:
-    row = _readme_agency_table().get(ticker)
-    return row["agency"] if row else "?"
-
-
-def _published_model_ranking() -> list[str]:
-    """The tickers in the order the comparison table ranks them."""
-    rows = _readme_agency_table()
-    ranked = [(t, r["rank"]) for t, r in rows.items() if r["rank"].isdigit()]
-    if not ranked:
-        raise ValueError("no ranked rows found - the table moved or changed shape")
-    return [t for t, _ in sorted(ranked, key=lambda x: int(x[1]))]
-
-
-def _ranking_from_published_dd() -> list[str]:
-    """
-    The same order, rebuilt from the DD column alone.
-
-    The ranking is now what the agency comparison rests on, so a rank that stops
-    following from its own DD would silently invert the one result this section
-    reports.
-    """
-    rows = _readme_agency_table()
-    ranked = [(t, float(r["dd"])) for t, r in rows.items() if r["rank"].isdigit()]
-    return [t for t, _ in sorted(ranked, key=lambda x: -x[1])]
-
-
-def _readme_spread_bands() -> dict[str, str]:
-    """
-    The Market Benchmark column of the Model 1 table, per rating.
-
-    That column is external market data (SOURCES.md #9) sitting in the same
-    tuple as the DD band edges, which are a model parameter with no source. The
-    two drifted apart once already, in the direction nobody checks: the README
-    kept unsourced figures while the code was the only place they existed.
-    """
-    bands: dict[str, str] = {}
     inside = False
     for line in _readme().splitlines():
         if line.startswith("#"):
@@ -196,21 +130,23 @@ def _readme_spread_bands() -> dict[str, str]:
         if not inside:
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) == 7 and cells[0] in TICKERS:
-            bands[cells[3]] = cells[6].replace("–", "-")
-    return bands
+        if len(cells) == 6 and cells[0] in TICKERS:
+            rows[cells[0]] = {"dd": cells[2], "band": cells[3]}
+        elif rows and not line.startswith("|"):
+            break
+    return rows
 
 
-def _code_spread_bands() -> dict[str, str]:
-    """The same bands as the rating table actually holds them."""
-    # The suppression sits on the first import of merton_core in this file and
-    # nowhere else - mypy reports an unresolved module once, so a second one
-    # would be flagged unused by warn_unused_ignores.
-    from merton_core import RATING_TABLE   # type: ignore[import-not-found]
-    published = _readme_spread_bands()
-    return {rating: f"{lo}-{hi}"
-            for rating, _dd_min, _dd_max, lo, hi in RATING_TABLE
-            if rating in published}
+def _claimed_dd(ticker: str) -> float:
+    row = _readme_headline_table().get(ticker)
+    return float(row["dd"]) if row else float("nan")
+
+
+def _claimed_band(ticker: str) -> str:
+    row = _readme_model1_table().get(ticker)
+    return row["band"] if row else "?"
+
+
 # endregion
 
 
@@ -251,15 +187,11 @@ def _dcf_collapses_to_perpetuity() -> bool:
     return abs(dcf_full(params)["ev"] - 1_000.0 / 0.10) < 1.0
 
 
-def _rating_for_dd(dd: float) -> str:
-    from merton_core import get_rating_info
-    return str(get_rating_info(dd)[0])
+def _band_for_dd(dd: float) -> str:
+    from merton_core import dd_band   # type: ignore[import-not-found]
+    return str(dd_band(dd))
 
 
-def _configured_agency_rating(ticker: str) -> str:
-    """None in a config means unrated, and the README must say so in words."""
-    import importlib
-    return getattr(importlib.import_module(f"Config.{ticker}"), "RATING", None) or "not rated"
 # endregion
 
 
@@ -352,15 +284,11 @@ def _images_without_a_producer() -> list[str]:
 def _rating_claim(ticker: str) -> Callable[[], str]:
     """Bind one ticker into a checkable claim; a bare lambda with a default
     argument leaves mypy nothing to infer the return type from."""
-    return lambda: _rating_for_dd(_claimed_dd(ticker))
+    return lambda: _band_for_dd(_claimed_dd(ticker))
 
 
 def _dd_claim(ticker: str) -> Callable[[], float]:
     return lambda: _recomputed_dd(ticker)
-
-
-def _agency_claim(ticker: str) -> Callable[[], str]:
-    return lambda: _configured_agency_rating(ticker)
 
 
 def build_claims() -> list[Claim]:
@@ -401,13 +329,6 @@ def build_claims() -> list[Claim]:
             compute=_dcf_collapses_to_perpetuity,
         ),
         Claim(
-            source="9. ICE BofA spreads",
-            claim="the published spread bands are the ones the code holds",
-            document=README,
-            expected=_readme_spread_bands(),
-            compute=_code_spread_bands,
-        ),
-        Claim(
             source="Repository itself",
             claim="every image the README links to exists",
             document=README,
@@ -423,36 +344,14 @@ def build_claims() -> list[Claim]:
         ),
     ]
 
-    # One rating claim per ticker: does the published rating still follow from
-    # the published Distance to Default? This catches a changed rating table
-    # even without the cache, because both figures are read from the README.
     for ticker in TICKERS:
         claims.append(Claim(
             source="Model 1 - Merton",
-            claim=f"{ticker}: the published rating follows from the published DD",
+            claim=f"{ticker}: the published DD band follows from the published DD",
             document=README,
-            expected=_claimed_rating(ticker),
+            expected=_claimed_band(ticker),
             compute=_rating_claim(ticker),
         ))
-
-    # The agency rating comes from outside and cannot be recomputed. What can be
-    # checked is that the two places holding it have not drifted apart.
-    for ticker in TICKERS:
-        claims.append(Claim(
-            source="8. Agency credit ratings",
-            claim=f"{ticker}: the published agency rating matches the config",
-            document=README,
-            expected=_claimed_agency_rating(ticker),
-            compute=_agency_claim(ticker),
-        ))
-
-    claims.append(Claim(
-        source="Model 1 - Merton",
-        claim="the published ranking follows from the published DD",
-        document=README,
-        expected=_published_model_ranking(),
-        compute=_ranking_from_published_dd,
-    ))
 
     # Expensive: re-run the model and compare against what the README prints.
     for ticker in TICKERS:
@@ -471,19 +370,13 @@ def build_claims() -> list[Claim]:
 # Figures no code in this repository can recompute. Listed so they are not
 # mistaken for verified just because everything above passed.
 BY_HAND = [
-    ("8. Agency ratings", "the rating letters themselves, and whether they still hold",
-     "each row in SOURCES.md #8 carries its agency and date - re-check the oldest"),
-    ("9. ICE BofA spreads", "the bands themselves, dated 2026-08-11",
-     "fred.stlouisfed.org/series/BAMLC0A4CBBB and the sibling series in SOURCES.md #9"),
-    ("Model parameter", "the DD band edges 8/6/4/2/1",
-     "no source exists - they are chosen. Nothing to re-check, but nothing to cite either"),
     ("5. S&P Global", "observed default rates, 1981-2024 edition, Table 24 p.56",
      "maalot.co.il/Publications/FTS20250331162126.pdf - take all seven from one "
      "edition or none; the previous set was blended across editions"),
-    ("6. Damodaran", "semiconductor sector beta reference of roughly 1.55-1.75",
-     "check against the January industry beta table"),
-    ("6. Damodaran", "sector multiple ranges used in the cross-check",
-     "check against the January multiples table"),
+    ("6. Damodaran", "the January 2026 sector betas, 1.40 and 1.52",
+     "pages.stern.nyu.edu/~adamodar - betas.xls, sheet Industry Averages"),
+    ("6. Damodaran", "the multiple bands in the cross-check",
+     "vebitda.xls, pedata.xls, psdata.xls - same vintage as the betas or none"),
 ]
 # endregion
 

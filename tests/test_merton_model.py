@@ -10,7 +10,7 @@ MERTON_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
 if MERTON_DIR not in sys.path:
     sys.path.insert(0, MERTON_DIR)
 
-from merton_core import merton_model, get_rating_info, calculate_spread
+from merton_core import merton_model, dd_band, BAND_LABELS, calculate_spread
 
 
 # ----------------------------------------------------------------------------
@@ -46,17 +46,34 @@ def test_merton_model_near_zero_debt_edge_case():
 
 
 # ----------------------------------------------------------------------------
-# region GET_RATING_INFO
+# region DD_BAND
 # ----------------------------------------------------------------------------
-def test_get_rating_info_maps_high_dd_to_best_rating():
-    rating, bps_lo, bps_hi = get_rating_info(dd=8.6)
-    assert rating == "AAA/AA"
-    assert bps_lo < bps_hi
+def test_dd_band_maps_a_high_dd_to_the_top_band():
+    assert dd_band(dd=8.6) == "DD > 8"
 
 
-def test_get_rating_info_maps_low_dd_to_worst_rating():
-    rating, bps_lo, bps_hi = get_rating_info(dd=0.5)
-    assert rating == "CCC"
+def test_dd_band_maps_a_low_dd_to_the_bottom_band():
+    assert dd_band(dd=0.5) == "DD < 1"
+
+
+def test_a_negative_dd_still_lands_in_the_bottom_band():
+    """Below the default point the model is out of range, not out of answers."""
+    assert dd_band(dd=-2.0) == "DD < 1"
+
+
+def test_every_band_edge_belongs_to_the_band_above_it():
+    """The boundary is inclusive at the bottom, so 4.0 is 'DD 4-6', not 'DD 2-4'."""
+    assert dd_band(4.0) == "DD 4-6"
+    assert dd_band(3.999) == "DD 2-4"
+
+
+def test_the_bands_carry_no_rating_letters():
+    """
+    The point of the rename. Letters made a reporting bucket look like a credit
+    opinion and invited a comparison against agencies the model cannot support.
+    """
+    assert not any(any(c.isalpha() and c not in "Dd" for c in label)
+                   for label in BAND_LABELS)
 # endregion
 
 

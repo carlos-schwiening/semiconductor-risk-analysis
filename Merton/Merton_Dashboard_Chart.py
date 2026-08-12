@@ -8,7 +8,7 @@ Run with: python Merton/Merton_Dashboard_Chart.py
   Block 2: Create 2x2 Subplot Chart
     Panel 1 (top-left):     DD Time Series — all 5 tickers
     Panel 2 (top-right):    Bubble Chart — DD vs. Credit Spread (Bn)
-    Panel 3 (bottom-left):  Rating Migration Heatmap (MCHP)
+    Panel 3 (bottom-left):  DD Band Migration Heatmap (MCHP)
     Panel 4 (bottom-right): IFRS 9 ECL Stage Horizontal Bars
   Block 3: PNG Export
 """
@@ -44,7 +44,7 @@ from plot_style import (
 EXCEL_DIR      = os.path.join(PROJECT_ROOT, "Outputs", "Excel")
 VIZ_DIR        = os.path.join(PROJECT_ROOT, "Outputs", "Visualisierung")
 TODAY          = date.today().strftime("%Y-%m-%d")
-RATING_ORDER   = ["AAA/AA", "A", "BBB", "BB", "B", "CCC"]
+BAND_ORDER     = ["DD > 8", "DD 6-8", "DD 4-6", "DD 2-4", "DD 1-2", "DD < 1"]
 TICKER_LIST    = ["MCHP", "INTC", "ON", "QCOM", "MPWR"]
 
 os.makedirs(VIZ_DIR, exist_ok=True)
@@ -76,8 +76,8 @@ print(f"  DD_TimeSeries_All:  {df_dd.shape}")
 df_summary = pd.read_excel(_xlsx_path, sheet_name="Summary")
 print(f"  Summary:            {df_summary.shape}")
 
-df_migration = pd.read_excel(_xlsx_path, sheet_name="Rating_Migration")
-print(f"  Rating_Migration:   {df_migration.shape}")
+df_migration = pd.read_excel(_xlsx_path, sheet_name="DD_Band_Migration")
+print(f"  DD_Band_Migration: {df_migration.shape}")
 # endregion
 
 
@@ -91,7 +91,7 @@ fig = make_subplots(
     subplot_titles=[
         "Distance to Default — 5 Tickers (Quarterly)",
         "DD vs. Credit Spread (Bubble = Market Cap)",
-        "Rating Migration Matrix (MCHP)",
+        "DD Band Migration Matrix (MCHP)",
         "IFRS 9 — 12M Expected Credit Loss",
     ],
     vertical_spacing=0.16,
@@ -155,14 +155,14 @@ for _, row_data in df_summary.iterrows():
         showlegend=False,
     ), row=1, col=2)
 
-# ── Panel 3: Rating migration heatmap ──────────────────────────
+# ── Panel 3: DD band migration heatmap ──────────────────────────
 pivot = (
     df_migration
     .pivot_table(
-        index="From_Rating", columns="To_Rating",
+        index="From_Band", columns="To_Band",
         values="Probability", aggfunc="first",
     )
-    .reindex(index=RATING_ORDER, columns=RATING_ORDER)
+    .reindex(index=BAND_ORDER, columns=BAND_ORDER)
     .fillna(0.0)
 )
 
@@ -174,8 +174,8 @@ text_vals = [
 
 fig.add_trace(go.Heatmap(
     z=z_vals,
-    x=RATING_ORDER,
-    y=RATING_ORDER,
+    x=BAND_ORDER,
+    y=BAND_ORDER,
     colorscale=[[0.0, "#FFFFFF"], [1.0, "#1B4332"]],
     showscale=False,
     text=text_vals,
@@ -216,7 +216,7 @@ fig.update_layout(
     title=dict(
         text=(
             "Merton Structural Credit Risk — Semiconductor Sector<br>"
-            "<sup>Distance to Default · Credit Spread · Rating Migration · IFRS 9 ECL</sup>"
+            "<sup>Distance to Default · Credit Spread · DD Band Migration · IFRS 9 ECL</sup>"
         ),
         font=TITLE_FONT,
         x=0.5,
@@ -254,14 +254,14 @@ fig.update_yaxes(
     **AXIS_DEFAULTS, row=1, col=2,
 )
 
-# Panel 3 heatmap axes (no gridlines, reverse y so AAA/AA at top)
+# Panel 3 heatmap axes (no gridlines, reverse y so the strongest band sits at the top)
 fig.update_xaxes(
-    title_text="To Rating", title_font=AXIS_FONT,
+    title_text="To band", title_font=AXIS_FONT,
     tickfont=TICK_FONT, showgrid=False, showline=False,
     row=2, col=1,
 )
 fig.update_yaxes(
-    title_text="From Rating", title_font=AXIS_FONT,
+    title_text="From band", title_font=AXIS_FONT,
     tickfont=TICK_FONT, showgrid=False, showline=False,
     autorange="reversed",
     row=2, col=1,
@@ -305,9 +305,9 @@ _s2    = df_summary[df_summary["ECL_Stage"] == 2]
 _s3    = df_summary[df_summary["ECL_Stage"] == 3]
 
 print(f">>> Highest DD:   {_best['Ticker']} (DD={float(_best['DD']):.2f}) "
-      f"— Rating {_best['Rating']} — lowest credit risk")
+      f"— {_best['DD_Band']} — lowest credit risk")
 print(f">>> Lowest DD:    {_worst['Ticker']} (DD={float(_worst['DD']):.2f}) "
-      f"— Rating {_worst['Rating']} — highest credit risk")
+      f"— {_worst['DD_Band']} — highest credit risk")
 if not _s2.empty:
     for _, r in _s2.iterrows():
         print(f">>> IFRS9 Stage 2:  {r['Ticker']} — significant increase in risk, "
@@ -331,13 +331,13 @@ print("Spread_bps     = Credit spread in basis points (calculated from Merton PD
 print("MarketCap_Bn   = Market capitalization in Bn USD (bubble size in Panel 2)")
 print("ECL_Stage      = IFRS9 stage: 1=unchanged, 2=significant increase, 3=default")
 print("ECL_12M        = Expected Credit Loss over 12 months (ECL = PD * LGD * EAD)")
-print("From_Rating    = Starting rating at the beginning of the period (row of the migration matrix)")
-print("To_Rating      = Ending rating at the end of the period (column of the migration matrix)")
+print("From_Band      = DD band at the start of the period (row of the migration matrix)")
+print("To_Band        = DD band at the end of the period (column of the migration matrix)")
 print("Probability    = Empirical transition probability (Count / row sum)")
 print("DD_STAGE1      = 4.0  (IFRS9 boundary Stage 1 / Stage 2)")
 print("DD_STAGE2      = 2.0  (IFRS9 boundary Stage 2 / Stage 3)")
 print("CHART_WIDTH    = 1400 (width in pixels)")
 print("CHART_HEIGHT   = 900  (height in pixels)")
 print("CHART_SCALE    = 2    (DPI scaling for PNG export)")
-print("RATING_ORDER   = ['AAA/AA','A','BBB','BB','B','CCC']  (heatmap y-axis)")
+print("BAND_ORDER     = DD bands on the migration heatmap axes")
 # endregion

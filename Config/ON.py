@@ -10,7 +10,6 @@ import os
 # ----------------------------------------------------------------------------
 COMPANY           = "ON Semiconductor"
 TICKER            = "ON"
-RATING            = "BB+"   # S&P; Moody's Ba1 affirmed 2026-01 — speculative grade — SOURCES.md #8
 # endregion
 
 # ----------------------------------------------------------------------------

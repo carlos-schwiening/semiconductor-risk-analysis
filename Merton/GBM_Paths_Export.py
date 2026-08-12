@@ -4,7 +4,7 @@ GBM_Paths_Export — GBM Asset Path Simulation Export
 Run with: python Merton/GBM_Paths_Export.py
 
   Block 0: Imports & Setup
-  Block 1: Merton Calculation (all 5 tickers) — V0, sigma_V, D, DD, Rating
+  Block 1: Merton Calculation (all 5 tickers) — V0, sigma_V, D, DD, DD band
   Block 2: GBM Path Simulation (N_PATHS=30, T=252 trading days)
   Block 3: Excel Export -> C:\\Python\\Projects\\Public\\semiconductor-risk-analysis\\Outputs\\Excel\\GBM_Paths.xlsx
 """
@@ -39,9 +39,9 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Pure calculation functions — extracted to merton_core.py (no I/O, safe to unit test)
 try:
-    from .merton_core import merton_model, get_rating_info
+    from .merton_core import merton_model, dd_band
 except ImportError:  # running directly as a script (python Merton/GBM_Paths_Export.py)
-    from merton_core import merton_model, get_rating_info  # type: ignore[import-not-found,no-redef]
+    from merton_core import merton_model, dd_band  # type: ignore[import-not-found,no-redef]
 
 N_PATHS = 30
 T       = 252
@@ -62,13 +62,13 @@ def load_json(filename: str) -> Any:
         return json.load(f)
 
 
-def dd_to_rating(dd: float) -> str:
+def dd_to_band(dd: float) -> str:
     """Thin wrapper so this script cannot hold its own copy of the band edges."""
-    return str(get_rating_info(dd)[0])
+    return dd_band(dd)
 
 
 print("\nMerton calculation (all 5 tickers):")
-print(f"  {'Ticker':<6} {'V0 (Mrd)':>10} {'D (Mrd)':>9} {'DD':>7} {'sigma_V':>9} {'Rating':<8}")
+print(f"  {'Ticker':<6} {'V0 (Mrd)':>10} {'D (Mrd)':>9} {'DD':>7} {'sigma_V':>9} {'DD Band':<9}")
 print(f"  {'-'*6} {'-'*10} {'-'*9} {'-'*7} {'-'*9} {'-'*8}")
 
 ticker_params = {}
@@ -88,17 +88,17 @@ for tkr in TICKER_LIST:
     r       = cfg.RISK_FREE_RATE
     T_cfg   = cfg.MATURITY
     m       = merton_model(E, D, r, T_cfg, sigma_e)
-    rating  = dd_to_rating(m["dd"])
+    band    = dd_to_band(m["dd"])
     ticker_params[tkr] = {
         "V0":      m["V"],
         "sigma_V": m["sigma_v"],
         "mu":      r,
         "D":       D,
         "dd":      m["dd"],
-        "rating":  rating,
+        "band":    band,
     }
     print(f"  {tkr:<6} {m['V']/1e9:>10.2f} {D/1e9:>9.2f} {m['dd']:>7.3f} "
-          f"{m['sigma_v']:>9.1%} {rating:<8}")
+          f"{m['sigma_v']:>9.1%} {band:<8}")
 
 # endregion
 
@@ -125,7 +125,7 @@ for tkr in TICKER_LIST:
     sv = p["sigma_V"]
     D  = p["D"]
     dd = round(p["dd"], 4)
-    rt = p["rating"]
+    bd = p["band"]
 
     # Z: (N_PATHS, T) iid N(0,1) increments
     Z = np.random.standard_normal((N_PATHS, T))
@@ -150,7 +150,7 @@ for tkr in TICKER_LIST:
         "asset_value":   np.round(asset_paths_bn.ravel(), 6),
         "default_point": round(D / 1e9, 6),
         "dd":            dd,
-        "rating":        rt,
+        "band":          bd,
     })
     all_dfs.append(df_tkr)
     print(f"  {tkr}: {len(df_tkr):,} rows generated")
@@ -182,7 +182,7 @@ print(df_gbm.head(10).to_string(index=False))
 print("\n=== Interpretation ===")
 for tkr in TICKER_LIST:
     p = ticker_params[tkr]
-    print(f">>> {tkr}: DD={p['dd']:.3f}  Rating={p['rating']}  "
+    print(f">>> {tkr}: DD={p['dd']:.3f}  Band={p['band']}  "
           f"V0={p['V0']/1e9:.1f} Bn  D={p['D']/1e9:.2f} Bn  "
           f"sigma_V={p['sigma_V']:.1%}")
 
@@ -211,7 +211,7 @@ print("log_inc       = (mu - 0.5*sigma_V^2)*dt + sigma_V*sqrt(dt)*Z  (log increm
 print("asset_value   = GBM-simulated asset value on day t (in Bn USD)")
 print("default_point = Constant threshold = D of the respective ticker (Bn USD)")
 print("dd            = Distance to Default from the Merton calculation (constant per ticker)")
-print("rating        = Credit rating from the DD mapping (AAA/AA>=8, A>=6, BBB>=4, BB>=2)")
+print("band          = DD reporting band (>8, 6-8, 4-6, 2-4, 1-2, <1) — a bucket, not a rating")
 print("path_id       = Path index (1 to 30)")
 print("day           = Trading day within the simulation horizon (0 to 252)")
 print("N_PATHS       = 30  (number of simulated GBM paths per ticker)")
