@@ -57,17 +57,23 @@ The defensible replacement is therefore not a better set of `DD` cut-offs but a 
 
 ### Model against the agencies
 
-| Ticker | Model | Agency | Agency source |
-|--------|-------|--------|---------------|
-| MCHP | BBB | BBB | Fitch, affirmed 2025-03-20 (Moody's Baa2, 2025-03-21) |
-| INTC | BB | BBB | S&P, cut from BBB+ in Aug 2025 — Intel states this in its own 10-K |
-| ON | BBB | BB+ | S&P; Moody's Ba1 affirmed Jan 2026 |
-| QCOM | A | A | S&P, affirmed 2024-03-08 (Moody's A2) |
-| MPWR | AAA/AA | not rated | no rated debt, and the 10-K names no agency at all |
+**The model's own letters are deliberately not used here.** Their thresholds have no source, so scoring the model against an external benchmark on a scale this project invented would not be a test of anything. What Merton actually produces is an ordering, so the comparison is an ordering too.
 
-Two exact matches and two misses of one notch, in opposite directions — the model is neither systematically loose nor systematically harsh. Where it diverges the cause is structural: it rewards a clean balance sheet almost mechanically, while an agency also weighs scale, competitive position and business risk that no equity-volatility model can observe.
+| Ticker | `DD` | Model rank | Agency | Agency rank | Agency source |
+|--------|-----:|-----------:|--------|------------:|---------------|
+| QCOM | 6.52 | 1 | A | 1 | S&P, affirmed 2024-03-08 (Moody's A2) |
+| MCHP | 5.14 | 2 | BBB | 2= | Fitch, affirmed 2025-03-20 (Moody's Baa2, 2025-03-21) |
+| ON | 4.17 | 3 | BB+ | 4 | S&P; Moody's Ba1 affirmed Jan 2026 |
+| INTC | 3.65 | 4 | BBB | 2= | S&P, cut from BBB+ in Aug 2025 — Intel states this in its own 10-K |
+| MPWR | 13.88 | — | not rated | — | no rated debt; the 10-K names no agency at all |
 
-MPWR is the row worth pausing on. With $0.02 Bn of debt it has nothing for an agency to rate, and none does — the cell is empty because the benchmark does not exist. A structural model carries no such precondition: it reads leverage and equity volatility and returns a figure whether or not the company ever issues a bond. That advantage only becomes visible once the cell is left honestly empty.
+Spearman rank correlation **+0.63** over the four rated issuers. Both ends agree: QCOM is the strongest credit on either view, and neither puts ON near the top.
+
+**INTC is the single disagreement, and it is the informative one.** The agencies keep it investment grade at BBB; the model ranks it last of the five. Both are defensible from what each can see — equity volatility and leverage say one thing, while an agency also weighs scale, government support, competitive position and business risk that no market-data model observes. The model is not wrong here so much as blind to a different set of facts.
+
+**With four issuers, a rank correlation of +0.63 is not evidence** (*p* = 0.37). It is an illustration. Establishing whether `DD` predicts default needs hundreds of firms and realised defaults, not five names and agency opinions — which is exactly what the companion project [credit-risk-validation](https://github.com/carlos-schwiening/credit-risk-validation) is built to do.
+
+MPWR sits outside the comparison entirely, and that is the point. With $0.02 Bn of debt it has nothing for an agency to rate, and none does — the cell is empty because the benchmark does not exist. A structural model carries no such precondition: it reads leverage and equity volatility and returns a figure whether or not the company ever issues a bond.
 
 **Where the model earns its keep: the five-year horizon.** The one-year `PD` is near zero for every investment-grade issuer here, which says more about the horizon than about the companies. The five-year `PD` — the same model, run at $T=5$, and the figure already driving the lifetime `ECL` — lands close to observed cumulative default rates:
 
@@ -97,7 +103,7 @@ The DCF model values equity using a two-phase discounted cash flow approach: an 
 
 $$WACC = \frac{E}{V} \cdot K_e + \frac{D}{V} \cdot K_d \cdot (1-t)$$
 
-**The resulting discount rates sit above sector norms, and that drives much of the result.** The 252-day betas come out between 1.67 and 2.46, against a semiconductor sector reference of roughly 1.55–1.75 (Damodaran). With a 4.3% risk-free rate and a 5.5% equity risk premium that yields a cost of equity of 13.5%–17.8%, where the sector reference is closer to 11%–12%. A discount rate two to six points above the reference is a large part of why all five names come out overvalued — a one-year daily beta is a noisy estimator, and the 2025/26 window contains unusually large idiosyncratic moves for these stocks. The scenario analysis below varies `WACC` by ±1.0–1.5 percentage points, which brackets part but not all of that gap.
+**The resulting discount rates sit above sector norms, and that drives much of the result.** The 252-day betas come out between 1.67 and 2.46, against Damodaran's January 2026 reference of 1.52 for Semiconductor (66 firms) and 1.40 for Semiconductor Equipment (31 firms). With a 4.3% risk-free rate and a 5.5% equity risk premium that yields a cost of equity of 13.5%–17.8%, where the reference betas imply 12.0%–12.7%. A discount rate one and a half to five points above the reference is a large part of why all five names come out overvalued — a one-year daily beta is a noisy estimator, and the 2025/26 window contains unusually large idiosyncratic moves for these stocks. The scenario analysis below varies `WACC` by ±1.0–1.5 percentage points, which brackets part but not all of that gap.
 
 $$EV_{DCF} = \sum_{t=1}^{5} \frac{FCF_t}{(1+WACC)^t} + \frac{FCF_5 \cdot (1+g_2)}{(WACC - g_2) \cdot (1+WACC)^5}$$
 
@@ -109,7 +115,7 @@ Scenario analysis stresses the Base Case along three paths, and a peer loop runs
 | Base | unchanged | unchanged | unchanged |
 | Bull | −1.0pp | +2pp | ×1.15 |
 
-A multiples cross-check benchmarks EV/EBITDA, P/E and EV/Sales against sector norms (Damodaran, Jan 2025).
+A multiples cross-check benchmarks EV/EBITDA, P/E and EV/Sales against sector norms (Damodaran, January 2026).
 
 **Reading the DCF and the multiples as two valuations is the mistake to avoid.** They use different bases on purpose: the DCF normalizes free cash flow over five years to smooth the cycle, the multiples are computed on the most recent fiscal year. In a trough year that inflates them sharply — MCHP's P/E of 173x reflects collapsed trailing earnings, not a 173-year payback. The cross-check tests current market pricing, not the DCF.
 

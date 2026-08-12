@@ -900,11 +900,18 @@ ev_ebitda_mult = mult_values["EV/EBITDA"]
 pe_ratio_mult  = mult_values["P/E"]
 ev_sales_mult  = mult_values["EV/Sales"]
 
-# Semiconductor sector benchmarks (Damodaran, Jan 2025)
+# Damodaran industry averages, January 2026 (SOURCES.md #6). Low and high are
+# his two semiconductor groups: Semiconductor Equipment (31 firms) and
+# Semiconductor (66 firms). Trailing, matching the trailing figures computed
+# above from the most recent fiscal year.
+#
+# These replace 15-25 / 20-35 / 3-8, which carried a Jan 2025 label and were
+# round to a degree his figures never are. The sector re-rated far above them,
+# so the old bands marked almost everything overvalued by construction.
 BENCH = {
-    "EV/EBITDA": (15.0, 25.0),
-    "P/E":       (20.0, 35.0),
-    "EV/Sales":  ( 3.0,  8.0),
+    "EV/EBITDA": (24.7,  34.8),
+    "P/E":       (46.8, 100.2),
+    "EV/Sales":  ( 7.6,  15.7),
 }
 
 mult_ratings = {name: rate_multiple(mult_values[name], lo, hi)
@@ -1128,7 +1135,7 @@ print("Ke             = Cost of equity = rf + Beta × market premium 5.5% (CAPM)
 print("Kd             = Cost of debt = interest expense / total debt")
 print("Kd after tax   = Kd × (1 − effective tax rate)")
 print("E/V, D/V       = Equity/debt share of total value (market basis)")
-print("market_premium = Equity Risk Premium (ERP) = 5.5% (Damodaran estimate)")
+print("market_premium = Equity Risk Premium (ERP) = 5.5% — a rounded assumption, not a quoted figure (SOURCES.md #6)")
 print("fcf_norm       = Normalized FCF = median of the last 5 annual values")
 print("g1             = Phase-1 growth rate (years 1–5, from Config GROWTH_MEAN)")
 print("g2             = Perpetual growth rate = Terminal Growth Rate (from Config)")

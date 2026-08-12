@@ -157,21 +157,48 @@ requires registration.
 
 ## 6. Damodaran (NYU Stern) — sector reference values
 
-**What for.** The reference the computed betas and multiples are held against.
-The README discloses that the 252-day betas (1.67–2.46) sit above the
-semiconductor sector reference (roughly 1.55–1.75), and that this drives much of
-the overvaluation result.
+**What for.** The reference the computed betas and multiples are held against,
+and the anchor for the equity risk premium.
+
+**Which vintage.** **January 2026** — the whole dataset carries one date, and
+mixing vintages is how the S&P figures above went wrong. From `betas.xls`,
+sheet *Industry Averages*, dated 2026-01-05:
+
+| Industry | Firms | Beta | EV/EBITDA | Trailing P/E | EV/Sales |
+|----------|------:|-----:|----------:|-------------:|---------:|
+| Semiconductor | 66 | 1.52 | 34.8 | 100.2 | 15.7 |
+| Semiconductor Equipment | 31 | 1.40 | 24.7 | 46.8 | 7.6 |
+
+The multiples cross-check uses the two rows as the low and high of its band.
+Files: `betas.xls`, `vebitda.xls`, `pedata.xls`, `psdata.xls`, all sheet
+*Industry Averages*.
 
 **See it yourself.** <https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datacurrent.html>
-Free, no registration, updated each January. Look for the industry beta and
-multiple tables.
+Free, no registration, updated each January. The raw files sit under
+`pages.stern.nyu.edu/~adamodar/pc/datasets/` — `betas.xls` for the table above,
+`histimpl.xls` for the implied premium below.
 
 **Covers.** Industry-level betas, costs of capital and multiples, US and global.
 
-**Limits that matter.** Industry averages, not company-specific. They tell you
-whether a computed value is in a normal range; they do not tell you the value is
-wrong. The README uses them exactly that way — as a disclosed gap, not a
-correction applied to the model.
+**Limits that matter.**
+- **The 5.5% equity risk premium is not a Damodaran figure.** His implied ERP was
+  **4.18%** at end-2025 and his 2006–2025 average **5.16%**. The 5.5% in
+  `dcf_core.py` is a rounded assumption sitting above both, and it feeds every
+  WACC in the project. It is left unchanged so the published DCF table stays
+  reproducible, and it is named here rather than passed off as sourced.
+- **The reference betas moved.** This entry previously said "roughly 1.55–1.75"
+  with no vintage; the January 2026 figures are 1.40–1.52. The gap between the
+  model's 252-day betas and the reference is therefore wider than the README
+  used to claim, not narrower.
+- **The multiple bands were badly stale.** They read 15–25 / 20–35 / 3–8 under a
+  "Jan 2025" label, against actual figures of 24.7–34.8 / 46.8–100.2 / 7.6–15.7.
+  The sector re-rated far above the old bands, so nearly everything was marked
+  expensive by construction. Correcting them moved MCHP's EV/Sales from
+  *expensive* to *fair* — no README figure depended on them, which is the only
+  reason this was a small fix rather than a large one.
+- **Industry averages, not company-specific.** They say whether a computed value
+  is in a normal range, not that it is wrong. The README uses them that way — as
+  a disclosed gap, not a correction applied to the model.
 
 ---
 
@@ -271,6 +298,36 @@ raw CSV is at `https://fred.stlouisfed.org/graph/fredgraph.csv?id=<SERIES>`.
 - **OAS strips out embedded options**, so it is comparable to a plain bullet
   spread. The Merton spread has no optionality either, which is why the two can
   be placed side by side at all.
+
+---
+
+## 10. Industry outlooks — the scenario assumptions
+
+**What for.** The Bear/Base/Bull cases in Model 2. They are not abstract
+±1.5 percentage-point nudges; each leg names a dated industry development.
+
+**Which sources.**
+
+| Source | Used for |
+|--------|----------|
+| Semiconductor Industry Association / WSTS Spring 2026 Forecast | the $1.5T 2026 industry sales figure in the Base Case |
+| Deloitte 2026 Semiconductor Industry Outlook | AI capex monetization risk (Bear), the ~$500B AI-chip share (Base) |
+| IDC, January 2026 (via The Straits Times) | memory cost pressure on PC/smartphone demand (Bear) |
+| SIA, "Chip Incentives & Investments" | CHIPS Act Section 48D credit expiring Dec 2026 (Bear) |
+| Pillsbury Law, June 2025 | Senate draft raising Section 48D from 25% to 30% (Bull) |
+
+**See it yourself.** All five are free to read online; the README footnote under
+the scenario table names each one in full.
+
+**Limits that matter.**
+- **Forecasts, not data.** WSTS and Deloitte publish expectations that later turn
+  out right or wrong. Nothing here re-checks them, and the scenario table would
+  not change if they did.
+- **They justify direction, not magnitude.** Why the Bear case lowers growth is
+  sourced; that it lowers it by exactly 2 points is not — that is a model
+  parameter, chosen to bracket a plausible downturn.
+- **Dated to 2025/26.** A scenario framework built on a specific policy debate
+  ages faster than the model around it.
 
 ---
 

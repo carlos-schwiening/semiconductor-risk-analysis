@@ -140,8 +140,14 @@ def _readme_agency_table() -> dict[str, dict[str, str]]:
         if not inside:
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) == 4 and cells[0] in TICKERS:
-            rows[cells[0]] = {"model": cells[1], "agency": cells[2]}
+        if len(cells) == 6 and cells[0] in TICKERS:
+            rows[cells[0]] = {"dd": cells[1], "rank": cells[2], "agency": cells[3]}
+        elif rows and not line.startswith("|"):
+            # Stop at the end of the first table. The PD table further down also
+            # has six columns and starts with a ticker, and without this it won
+            # silently - the same trap this file's headline parser was already
+            # anchored against.
+            break
     return rows
 
 
@@ -150,9 +156,26 @@ def _claimed_agency_rating(ticker: str) -> str:
     return row["agency"] if row else "?"
 
 
-def _claimed_model_rating_in_comparison(ticker: str) -> str:
-    row = _readme_agency_table().get(ticker)
-    return row["model"] if row else "?"
+def _published_model_ranking() -> list[str]:
+    """The tickers in the order the comparison table ranks them."""
+    rows = _readme_agency_table()
+    ranked = [(t, r["rank"]) for t, r in rows.items() if r["rank"].isdigit()]
+    if not ranked:
+        raise ValueError("no ranked rows found - the table moved or changed shape")
+    return [t for t, _ in sorted(ranked, key=lambda x: int(x[1]))]
+
+
+def _ranking_from_published_dd() -> list[str]:
+    """
+    The same order, rebuilt from the DD column alone.
+
+    The ranking is now what the agency comparison rests on, so a rank that stops
+    following from its own DD would silently invert the one result this section
+    reports.
+    """
+    rows = _readme_agency_table()
+    ranked = [(t, float(r["dd"])) for t, r in rows.items() if r["rank"].isdigit()]
+    return [t for t, _ in sorted(ranked, key=lambda x: -x[1])]
 
 
 def _readme_spread_bands() -> dict[str, str]:
@@ -340,10 +363,6 @@ def _agency_claim(ticker: str) -> Callable[[], str]:
     return lambda: _configured_agency_rating(ticker)
 
 
-def _comparison_model_claim(ticker: str) -> Callable[[], str]:
-    return lambda: _claimed_model_rating_in_comparison(ticker)
-
-
 def build_claims() -> list[Claim]:
     claims: list[Claim] = [
         Claim(
@@ -417,8 +436,7 @@ def build_claims() -> list[Claim]:
         ))
 
     # The agency rating comes from outside and cannot be recomputed. What can be
-    # checked is that the two places holding it have not drifted apart, and that
-    # the comparison table quotes the same model letter as the headline table.
+    # checked is that the two places holding it have not drifted apart.
     for ticker in TICKERS:
         claims.append(Claim(
             source="8. Agency credit ratings",
@@ -427,13 +445,14 @@ def build_claims() -> list[Claim]:
             expected=_claimed_agency_rating(ticker),
             compute=_agency_claim(ticker),
         ))
-        claims.append(Claim(
-            source="Model 1 - Merton",
-            claim=f"{ticker}: both README tables quote the same model rating",
-            document=README,
-            expected=_claimed_rating(ticker),
-            compute=_comparison_model_claim(ticker),
-        ))
+
+    claims.append(Claim(
+        source="Model 1 - Merton",
+        claim="the published ranking follows from the published DD",
+        document=README,
+        expected=_published_model_ranking(),
+        compute=_ranking_from_published_dd,
+    ))
 
     # Expensive: re-run the model and compare against what the README prints.
     for ticker in TICKERS:

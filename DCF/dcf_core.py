@@ -12,7 +12,13 @@ from typing import TypedDict, cast
 import numpy as np
 import pandas as pd
 
-# Equity Risk Premium (Damodaran estimate) — default for the CAPM cost of equity.
+# Equity Risk Premium for the CAPM cost of equity. A rounded assumption, not a
+# quoted figure: Damodaran's implied ERP was 4.18% at the end of 2025 and his
+# 2006-2025 average 5.16%, so 5.5% sits above the current level and just above
+# the long-run one. Every WACC and every DCF value depends on it - moving it to
+# 4.18% would lower each cost of equity by roughly 1.3 x beta points and raise
+# every valuation. Left as it is so the published table stays reproducible.
+# See SOURCES.md #6.
 MARKET_PREMIUM: float = 0.055
 
 # Fallback effective tax rate when no profitable year is available (U.S. federal rate).
