@@ -142,6 +142,44 @@ def _claimed_dd(ticker: str) -> float:
     return float(row["dd"]) if row else float("nan")
 
 
+SP_5Y_RATES = {"AAA": 0.34, "AA": 0.28, "A": 0.39, "BBB": 1.36,
+               "BB": 5.75, "B": 15.60, "CCC/C": 46.53}
+
+
+def _readme_pd_table() -> dict[str, dict[str, str]]:
+    """
+    The PD comparison table: model PD against the S&P class it lands nearest.
+
+    This table had no claim on it, which is why a stale column survived the
+    removal of the rating letters - it still named the class the deleted mapping
+    would have assigned. A published figure with nothing pointing at it is a
+    figure that drifts unobserved.
+    """
+    rows: dict[str, dict[str, str]] = {}
+    for line in _readme().splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 5 and cells[0] in TICKERS and cells[1].endswith("%"):
+            rows[cells[0]] = {"pd5": cells[2].strip("*"), "klass": cells[3]}
+    return rows
+
+
+def _claimed_nearest_class(ticker: str) -> str:
+    row = _readme_pd_table().get(ticker)
+    return row["klass"] if row else "?"
+
+
+def _nearest_class_from_published_pd(ticker: str) -> str:
+    """Recompute the class from the PD printed beside it, on a log scale."""
+    import math
+    row = _readme_pd_table().get(ticker)
+    if not row:
+        raise ValueError(f"{ticker} is not in the PD table - shape changed")
+    pd_val = float(row["pd5"].rstrip("%"))
+    if pd_val <= 0:
+        return "none — below AA"
+    return min(SP_5Y_RATES, key=lambda k: abs(math.log(pd_val / SP_5Y_RATES[k])))
+
+
 def _claimed_band(ticker: str) -> str:
     row = _readme_model1_table().get(ticker)
     return row["band"] if row else "?"
@@ -287,6 +325,10 @@ def _rating_claim(ticker: str) -> Callable[[], str]:
     return lambda: _band_for_dd(_claimed_dd(ticker))
 
 
+def _nearest_class_claim(ticker: str) -> Callable[[], str]:
+    return lambda: _nearest_class_from_published_pd(ticker)
+
+
 def _dd_claim(ticker: str) -> Callable[[], float]:
     return lambda: _recomputed_dd(ticker)
 
@@ -351,6 +393,15 @@ def build_claims() -> list[Claim]:
             document=README,
             expected=_claimed_band(ticker),
             compute=_rating_claim(ticker),
+        ))
+
+    for ticker in TICKERS:
+        claims.append(Claim(
+            source="5. S&P Global",
+            claim=f"{ticker}: the nearest S&P class follows from the published PD",
+            document=README,
+            expected=_claimed_nearest_class(ticker),
+            compute=_nearest_class_claim(ticker),
         ))
 
     # Expensive: re-run the model and compare against what the README prints.

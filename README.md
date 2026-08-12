@@ -54,17 +54,21 @@ The market benchmark column went with them. Market spreads are quoted per rating
 
 **Where the model earns its keep: the five-year horizon.** The one-year `PD` is near zero for every investment-grade issuer here, which says more about the horizon than about the companies. The five-year `PD` — the same model, run at $T=5$, and the figure already driving the lifetime `ECL` — lands close to observed cumulative default rates:
 
-| Ticker | S&P class compared against | $PD$ 1Y (model) | $PD$ 1Y (observed) | $PD$ 5Y (model) | $PD$ 5Y (observed) |
-|--------|----------------------------|----------------:|-------------------:|----------------:|-------------------:|
-| MCHP | BBB | 0.0000% | 0.14% | **1.95%** | 1.36% |
-| QCOM | A | 0.0000% | 0.05% | **0.33%** | 0.39% |
-| INTC | BB | 0.0131% | 0.56% | **9.82%** | 5.75% |
-| ON | BBB | 0.0015% | 0.14% | **6.40%** | 1.36% |
-| MPWR | AAA/AA | 0.0000% | 0.00–0.02% | 0.00% | 0.28–0.34% |
+| Ticker | $PD$ 1Y (model) | $PD$ 5Y (model) | Nearest S&P class | Its observed 5Y rate |
+|--------|----------------:|----------------:|-------------------|---------------------:|
+| MCHP | 0.0000% | **1.95%** | BBB | 1.36% |
+| QCOM | 0.0000% | **0.33%** | AAA | 0.34% |
+| INTC | 0.0131% | **9.82%** | B | 15.60% |
+| ON | 0.0015% | **6.40%** | BB | 5.75% |
+| MPWR | 0.0000% | 0.00% | none — below AA | 0.28% |
 
-*Observed = S&P Global Ratings, **2024 Annual Global Corporate Default And Rating Transition Study** (27 March 2025), Table 24 — global corporate average cumulative default rates, 1981–2024. Every figure comes from that one edition; see [SOURCES.md](SOURCES.md) #5 for why that matters. AAA and AA are listed separately there, hence the range for MPWR's bucket.*
+*Nearest class is an **output**, not an assumption: it is whichever S&P category's five-year rate the model's own figure lands closest to, on a log scale. Nothing assigns a rating beforehand. Observed rates: S&P Global Ratings, **2024 Annual Global Corporate Default And Rating Transition Study** (27 March 2025), Table 24 — 1981–2024, one edition throughout; see [SOURCES.md](SOURCES.md) #5.*
 
-Three of the five land in the right neighbourhood at five years, which is the more meaningful validation of a structural model than any one-year figure. ON is the exception and worth naming: its five-year `PD` of 6.40% is nearly five times the BBB benchmark, so the model's own outputs disagree with each other — the `DD` band and the IFRS 9 stage come from the one-year figure, the lifetime `ECL` from the five-year one, and for ON those two tell different stories. MPWR's 0.00% reflects a firm with almost no debt, where the structural model has nothing to price.
+Three of the five land within a factor of two of the class they map to, which is the more meaningful validation of a structural model than any one-year figure.
+
+**The model spreads the five wider than the agencies do.** QCOM maps to AAA and INTC to B — four categories apart, where the agencies separated them by two. That is the structural model doing what it does: it reads leverage and equity volatility and nothing else, so a clean balance sheet pulls hard upward and a stressed one hard down. Neither reading is the correct one; they see different things.
+
+MPWR maps to no class at all. Its `PD` is 0.00% against a lowest observed rate of 0.28%, because a firm with $0.02 Bn of debt gives a structural model almost nothing to price.
 
 **The model prices almost no credit risk at a one-year horizon, and that gap is a result rather than an error.** The theoretical spread follows from the risk-neutral $PD$ via $s = -\ln(1 - PD \cdot LGD)\,/\,T$, and a $DD$ of 5.14 corresponds to a $PD$ of roughly $10^{-7}$. Observed market spreads compensate for liquidity, recovery uncertainty and jump-to-default risk that a diffusion process cannot represent — the well-documented credit spread puzzle of structural models at short horizons. The informative content of the Merton model here is the $DD$ ranking and the IFRS 9 staging, not the absolute spread level.
 
